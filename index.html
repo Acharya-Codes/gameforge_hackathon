@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARCADE MACHINE — AACHI'S GAMESLOT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --silksong-dark: #07030a;
+    --silksong-crimson: #e11d48;
+    --silksong-silk: #fda4af;
+    --silksong-gold: #f59e0b;
+    --cab-charcoal: #131722;
+    --cab-trim: #2a3142;
+    --bezel-dark: #070a10;
+    --screen-cyan: #00f2fe;
+    --btn-red: #ef4444;
+    --btn-blue: #3b82f6;
+    --btn-gold: #f59e0b;
+    --btn-green: #10b981;
+    --btn-purple: #a855f7;
+    --arcade-font: 'Press Start 2P', monospace;
+    --sub-font: 'Silkscreen', monospace;
+  }
+  * { box-sizing: border-box; user-select: none; }
+  
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--sub-font), monospace;
+    color: #e2e8f0;
+    background: radial-gradient(circle at 50% 20%, #1e0924 0%, var(--silksong-dark) 75%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Hollow Knight Silksong Atmospheric Backdrop */
+  .silksong-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  /* Silk threads crisscrossing */
+  .silk-thread {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(225, 29, 72, 0.45), rgba(254, 205, 211, 0.6), transparent);
+    box-shadow: 0 0 10px rgba(225, 29, 72, 0.5);
+    transform-origin: left center;
+  }
+  .silk-thread.t1 { top: 15%; left: -10%; width: 120%; transform: rotate(-8deg); }
+  .silk-thread.t2 { top: 70%; left: -10%; width: 120%; transform: rotate(12deg); opacity: 0.5; }
+  .silk-thread.t3 { top: 40%; left: -10%; width: 120%; transform: rotate(-3deg); opacity: 0.35; }
+  
+  /* Drifting Silksong silk embers / motes */
+  .ember {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #ff4d6d;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff4d6d, 0 0 14px #ff758f;
+    animation: floatUp 8s infinite linear;
+    opacity: 0.7;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(105vh) translateX(0); opacity: 0; }
+    20% { opacity: 0.8; }
+    80% { opacity: 0.6; }
+    100% { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+  }
+
+  /* Top Navigation Bar */
+  .top-bar {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 6px;
+  }
+  .silksong-brand {
+    font-family: var(--arcade-font);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--silksong-silk);
+    text-shadow: 0 0 10px rgba(225, 29, 72, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .needle-icon { font-size: 16px; color: var(--silksong-crimson); filter: drop-shadow(0 0 6px var(--silksong-crimson)); }
+
+  .mode-switch-group {
+    display: flex;
+    background: rgba(10, 5, 14, 0.85);
+    border: 2px solid #3f183e;
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow: 0 0 12px rgba(225, 29, 72, 0.2);
+  }
+  .mode-btn {
+    border: 0;
+    background: transparent;
+    font-family: var(--arcade-font);
+    font-size: 9px;
+    color: #94a3b8;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: var(--silksong-crimson);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(225, 29, 72, 0.6);
+  }
+
+  /* Main Stage holding Arcade Cabinet & Diagnostic Panel */
+  main {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px 16px 40px;
+    width: 100%;
+    max-width: 1280px;
+  }
+  body.mode-mobile main {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ========================================================
+     THE ARCADE CABINET (From Sketch)
+     ======================================================== */
+  .arcade-cabinet {
+    background: linear-gradient(180deg, #1d212d 0%, #11141c 100%);
+    border: 5px solid #2d3748;
+    border-radius: 20px 20px 16px 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(225, 29, 72, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Top Marquee: "ARCADE MACHINE" */
+  .cabinet-marquee {
+    width: 100%;
+    background: linear-gradient(180deg, #110414 0%, #2b082e 60%, #150317 100%);
+    border-bottom: 4px solid #4a154b;
+    padding: 16px 20px;
+    text-align: center;
+    position: relative;
+    box-shadow: inset 0 0 25px rgba(225, 29, 72, 0.4), 0 4px 15px rgba(0, 0, 0, 0.7);
+  }
+  .marquee-text {
+    font-family: var(--arcade-font);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #fff;
+    text-shadow: 0 0 8px #ff4d6d, 0 0 18px #ff0055, 0 0 30px #e11d48;
+    margin: 0;
+  }
+  .marquee-lamps {
+    display: flex;
+    justify-content: space-around;
+    padding-top: 6px;
+  }
+  .lamp {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff4d6d;
+    box-shadow: 0 0 8px #ff4d6d;
+    animation: lampBlink 1.2s infinite alternate;
+  }
+  .lamp:nth-child(even) { animation-delay: 0.6s; background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+  @keyframes lampBlink { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+
+  /* CRT Monitor Housing */
+  .crt-housing {
+    padding: 16px;
+    background: #090c12;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .crt-bezel {
+    border: 8px solid #1a202c;
+    border-radius: 18px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.95), 0 0 25px rgba(0, 0, 0, 0.8);
+    position: relative;
+    background: #05080e;
+    overflow: hidden;
+  }
+  /* CRT scanlines effect */
+  .crt-bezel::after {
+    content: " ";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%);
+    background-size: 100% 4px;
+    z-index: 4;
+    border-radius: 10px;
+  }
+  /* Curved glass glare */
+  .crt-glare {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 5;
+  }
+  canvas#game {
+    display: block;
+    touch-action: none;
+    background: #060911;
+  }
+
+  /* ========================================================
+     CONTROL DECK: "AACHI'S GAMESLOT" (Directly from Sketch)
+     ======================================================== */
+  .control-deck {
+    width: 100%;
+    background: linear-gradient(180deg, #1a202c 0%, #101520 60%, #0a0d14 100%);
+    border-top: 4px solid #2d3748;
+    padding: 16px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    box-shadow: inset 0 8px 16px rgba(255, 255, 255, 0.06), 0 -4px 10px rgba(0, 0, 0, 0.5);
+  }
+  .deck-title {
+    font-family: var(--arcade-font);
+    font-size: 13px;
+    color: #f59e0b;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+
+  /* Layout of controls inside the deck */
+  .deck-controls-row {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Control Wrapper */
+  .control-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 🕹️ MOVING JOYSTICK (Left Side of Sketch) */
+  .joystick-assembly {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .joystick-mount {
+    width: 90px;
+    height: 90px;
+    background: radial-gradient(circle, #2d3748 0%, #11141c 70%);
+    border: 3px solid #4a5568;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.8), 0 6px 12px rgba(0, 0, 0, 0.6);
+    cursor: grab;
+  }
+  .dir-arrow {
+    position: absolute;
+    font-size: 9px;
+    color: #64748b;
+    font-weight: bold;
+    pointer-events: none;
+  }
+  .dir-arrow.l { left: 5px; }
+  .dir-arrow.r { right: 5px; }
+  .dir-arrow.u { top: 4px; }
+  .dir-arrow.active { color: #00f2fe; text-shadow: 0 0 8px #00f2fe; }
+
+  .joystick-washer {
+    width: 44px;
+    height: 44px;
+    background: #090c12;
+    border: 2px solid #1a202c;
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+  }
+  .joystick-stick {
+    position: relative;
+    z-index: 2;
+    width: 14px;
+    height: 48px;
+    transform-origin: bottom center;
+    transition: transform 0.08s ease-out;
+  }
+  .joystick-shaft {
+    width: 8px;
+    height: 36px;
+    background: linear-gradient(90deg, #94a3b8 0%, #ffffff 40%, #475569 100%);
+    margin: 0 auto;
+    border-radius: 4px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+  }
+  .joystick-ball {
+    width: 32px;
+    height: 32px;
+    background: radial-gradient(circle at 35% 35%, #ff4d6d 0%, #dc2626 55%, #7f1d1d 100%);
+    border-radius: 50%;
+    position: absolute;
+    top: -16px;
+    left: -9px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.5), 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+  /* Physical animated tilt states */
+  .joystick-stick.tilt-left  { transform: rotate(-24deg) translateY(-2px); }
+  .joystick-stick.tilt-right { transform: rotate(24deg) translateY(-2px); }
+  .joystick-stick.tilt-up    { transform: rotateX(24deg) translateY(-6px) scale(0.95); }
+
+  /* 🔴 ARCADE PUSHBUTTONS */
+  .btn-label-tag {
+    font-family: var(--arcade-font);
+    font-size: 8px;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 5px;
+    letter-spacing: 0.5px;
+  }
+
+  .arcade-btn {
+    border: 0;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.06s ease, box-shadow 0.06s ease;
+    outline: none;
+  }
+  .arcade-btn:active, .arcade-btn.pressed {
+    transform: translateY(4px) scale(0.96) !important;
+  }
+
+  /* Center cluster: SPACE + Eye Camera Button below */
+  .center-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  /* [ SPACE ] Button */
+  .btn-space {
+    width: 82px;
+    height: 48px;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 30%, #38bdf8 0%, #0284c7 60%, #075985 100%);
+    border: 3px solid #0369a1;
+    box-shadow: 0 6px 0 #082f49, 0 8px 15px rgba(0, 0, 0, 0.6), 0 0 18px rgba(56, 189, 248, 0.3);
+    font-family: var(--arcade-font);
+    font-size: 11px;
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  }
+  .btn-space:active, .btn-space.pressed {
+    box-shadow: 0 2px 0 #082f49, 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 25px rgba(56, 189, 248, 0.6) !important;
+  }
+
+  /* 👁️ Camera Button */
+  .btn-camera {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #10b981 0%, #059669 60%, #047857 100%);
+    border: 3px solid #065f46;
+    box-shadow: 0 5px 0 #064e3b, 0 6px 12px rgba(0, 0, 0, 0.6);
+    font-size: 18px;
+    color: #fff;
+  }
+  .btn-camera.off {
+    background: radial-gradient(circle at 40% 40%, #475569 0%, #334155 60%, #1e293b 100%);
+    border-color: #1e293b;
+    box-shadow: 0 5px 0 #0f172a, 0 6px 12px rgba(0, 0, 0, 0.6);
+    opacity: 0.8;
+  }
+
+  /* 🔥 POWER (Fire symbol) Button */
+  .power-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .btn-power {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fbbf24 0%, #ea580c 60%, #9a3412 100%);
+    border: 3px solid #c2410c;
+    box-shadow: 0 6px 0 #7c2d12, 0 8px 15px rgba(0, 0, 0, 0.6), 0 0 18px rgba(245, 158, 11, 0.3);
+    font-size: 24px;
+    color: #fff;
+  }
+  .btn-power:active, .btn-power.pressed {
+    box-shadow: 0 2px 0 #7c2d12, 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.8) !important;
+  }
+
+  /* Right column: 🔊 SOUND + 🎙️ MIC */
+  .right-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-small-arcade {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #a855f7 0%, #7e22ce 60%, #581c87 100%);
+    border: 3px solid #6b21a8;
+    box-shadow: 0 5px 0 #3b0764, 0 6px 12px rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+    color: #fff;
+  }
+  .btn-small-arcade.off {
+    background: radial-gradient(circle at 40% 40%, #475569 0%, #334155 60%, #1e293b 100%);
+    border-color: #1e293b;
+    box-shadow: 0 5px 0 #0f172a;
+    opacity: 0.7;
+  }
+
+  /* ========================================================
+     AUXILIARY DIAGNOSTIC HUD / WEBCAM SCREEN
+     ======================================================== */
+  .side-panel {
+    width: 310px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  body.mode-mobile .side-panel {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .aux-screen {
+    background: #090c14;
+    border: 3px solid #2d3748;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .aux-header {
+    font-family: var(--arcade-font);
+    font-size: 9px;
+    color: var(--silksong-gold);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cam-box {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #1e293b;
+  }
+  video#video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    opacity: 0.85;
+  }
+  .aux-hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hud-tag {
+    position: absolute;
+    bottom: 6px;
+    font-family: var(--arcade-font);
+    font-size: 8px;
+    background: rgba(0,0,0,0.8);
+    color: #00f2fe;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #00f2fe;
+  }
+
+  .aux-status {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.4;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    border-left: 3px solid var(--silksong-crimson);
+  }
+
+  .arcade-guide {
+    background: #0c0f17;
+    border: 2px solid #1f293d;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .guide-head {
+    font-family: var(--arcade-font);
+    font-size: 9px;
+    color: #38bdf8;
+    margin-bottom: 2px;
+  }
+  .guide-row {
+    display: flex;
+    gap: 6px;
+    color: #cbd5e1;
+    line-height: 1.4;
+  }
+  .guide-tag {
+    font-family: var(--arcade-font);
+    font-size: 7px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    height: fit-content;
+  }
+  .tag-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+  .tag-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+  .tag-gold { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+
+  /* Bottom Left QR Widget */
+  .qr-widget {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    z-index: 100;
+    background: rgba(14, 8, 20, 0.92);
+    border: 2px solid var(--silksong-crimson);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 15px rgba(225, 29, 72, 0.3);
+  }
+  .qr-label {
+    font-family: var(--arcade-font);
+    font-size: 7px;
+    color: var(--silksong-silk);
+    letter-spacing: 1px;
+  }
+  .qr-box {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .qr-box img { width: 96px; height: 96px; display: block; }
+  .qr-input {
+    font-family: var(--sub-font);
+    font-size: 9px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #4a154b;
+    border-radius: 4px;
+    color: #fff;
+    padding: 4px;
+    width: 104px;
+    text-align: center;
+    outline: none;
+  }
+  .qr-btn {
+    font-family: var(--arcade-font);
+    font-size: 7px;
+    background: var(--silksong-crimson);
+    border: 0;
+    color: #fff;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 104px;
+  }
+  body.mode-mobile .qr-widget { display: none; }
+  @media (max-width: 820px) {
+    .qr-widget { display: none; }
+    .marquee-text { font-size: 14px; letter-spacing: 2px; }
+  }
+</style>
+</head>
+<body class="mode-pc">
+
+<!-- Silksong Atmospheric Background Elements -->
+<div class="silksong-bg">
+  <div class="silk-thread t1"></div>
+  <div class="silk-thread t2"></div>
+  <div class="silk-thread t3"></div>
+  <div class="ember" style="left: 12%; animation-duration: 9s; animation-delay: 0s;"></div>
+  <div class="ember" style="left: 28%; animation-duration: 7s; animation-delay: 2s;"></div>
+  <div class="ember" style="left: 45%; animation-duration: 11s; animation-delay: 4s;"></div>
+  <div class="ember" style="left: 68%; animation-duration: 8s; animation-delay: 1s;"></div>
+  <div class="ember" style="left: 84%; animation-duration: 10s; animation-delay: 3s;"></div>
+</div>
+
+<!-- Header with Mode Selector -->
+<div class="top-bar">
+  <div class="silksong-brand">
+    <span class="needle-icon">🗡️</span> PHARLOOM ARCADE
+  </div>
+  <div class="mode-switch-group">
+    <button id="modePcBtn" class="mode-btn active" title="Widescreen PC cabinet mode">💻 PC CAB</button>
+    <button id="modeMobileBtn" class="mode-btn" title="Portrait Mobile cabinet mode">📱 MOBILE</button>
+  </div>
+</div>
+
+<main>
+  <!-- ===================================================
+       THE ARCADE MACHINE CABINET (Exact match to sketch)
+       =================================================== -->
+  <div class="arcade-cabinet">
+    
+    <!-- Top Marquee from sketch: "ARCADE MACHINE" -->
+    <div class="cabinet-marquee">
+      <div class="marquee-lamps">
+        <div class="lamp"></div><div class="lamp"></div><div class="lamp"></div>
+        <div class="lamp"></div><div class="lamp"></div><div class="lamp"></div>
+      </div>
+      <h1 class="marquee-text">ARCADE MACHINE</h1>
+    </div>
+
+    <!-- CRT Screen inside Bezel Housing -->
+    <div class="crt-housing">
+      <div class="crt-bezel">
+        <div class="crt-glare"></div>
+        <canvas id="game" width="720" height="480"></canvas>
+      </div>
+    </div>
+
+    <!-- Control Deck from sketch: "AACHI'S GAMESLOT" -->
+    <div class="control-deck">
+      <div class="deck-title">★ AACHI'S GAMESLOT ★</div>
+
+      <div class="deck-controls-row">
+        <!-- LEFT: MOVING JOYSTICK -->
+        <div class="control-col">
+          <div class="joystick-assembly">
+            <div class="joystick-mount" id="joystickMount">
+              <span class="dir-arrow l" id="arrowL">◀</span>
+              <span class="dir-arrow u" id="arrowU">▲</span>
+              <span class="dir-arrow r" id="arrowR">▶</span>
+              <div class="joystick-washer"></div>
+              <div class="joystick-stick" id="joystickStick">
+                <div class="joystick-shaft"></div>
+                <div class="joystick-ball" id="joystickBall"></div>
+              </div>
+            </div>
+            <div class="btn-label-tag">JOYSTICK</div>
+          </div>
+        </div>
+
+        <!-- CENTER: [ SPACE ] BUTTON & 👁️ CAMERA BUTTON BELOW -->
+        <div class="control-col">
+          <div class="center-buttons">
+            <div>
+              <button id="spaceBtn" class="arcade-btn btn-space">SPACE</button>
+              <div class="btn-label-tag">JUMP</div>
+            </div>
+            <div>
+              <button id="camBtn" class="arcade-btn btn-camera off" title="Camera Face Control On/Off">👁️</button>
+              <div class="btn-label-tag">CAMERA</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT-CENTER: POWER (FIRE SYMBOL) BOOST BUTTON -->
+        <div class="control-col power-col">
+          <button id="powerBtn" class="arcade-btn btn-power" title="Hold for Speed Boost">🔥</button>
+          <div class="btn-label-tag">POWER</div>
+        </div>
+
+        <!-- FAR RIGHT: 🔊 SOUND + 🎙️ MIC BUTTONS -->
+        <div class="control-col">
+          <div class="right-buttons">
+            <div>
+              <button id="soundBtn" class="arcade-btn btn-small-arcade" title="Mute/Unmute Audio">🔊</button>
+              <div class="btn-label-tag">SOUND</div>
+            </div>
+            <div>
+              <button id="micBtn" class="arcade-btn btn-small-arcade off" title="Mic Control On/Off">🎙️</button>
+              <div class="btn-label-tag">MIC</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auxiliary Diagnostic / Eye Camera Sub-Screen -->
+  <div class="side-panel">
+    <div class="aux-screen">
+      <div class="aux-header">
+        <span>NEURAL TRACKER</span>
+        <span id="camFps">AI SCOPE</span>
+      </div>
+      <div class="cam-box">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="aux-hud">
+          <div id="hudAction" class="hud-tag" style="display:none;">STANDBY</div>
+        </div>
+      </div>
+      <div id="status" class="aux-status">Controls active. Press 👁️ Camera button on deck for head tracking!</div>
+    </div>
+
+    <!-- Quick Reference -->
+    <div class="arcade-guide">
+      <div class="guide-head">🕹️ DECK INSTRUCTIONS</div>
+      <div class="guide-row">
+        <span class="guide-tag tag-blue">JOYSTICK</span>
+        <span>A/D, arrows or physical tilt changes lane.</span>
+      </div>
+      <div class="guide-row">
+        <span class="guide-tag tag-red">SPACE</span>
+        <span>Space key, deck button or tilt head up jumps!</span>
+      </div>
+      <div class="guide-row">
+        <span class="guide-tag tag-gold">POWER</span>
+        <span>Shift key, flame button or smile boosts!</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- QR Code Widget (Fixed Bottom-Left) -->
+<div class="qr-widget" id="qrWidget">
+  <div class="qr-label">📱 PLAY ON MOBILE</div>
+  <div class="qr-box">
+    <img id="qrImg" src="" alt="QR">
+  </div>
+  <input id="qrUrlInput" class="qr-input" type="text" placeholder="http://192.168.x.x:5500" spellcheck="false">
+  <button id="qrRegenBtn" class="qr-btn">GENERATE QR</button>
+</div>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+/* ---------- CONFIGURATION ---------- */
+const CONFIG = { tiltDeadZone: 2, tiltMax: 14, tiltTrigger: 0.35, tiltReset: 0.16,
+                 tiltRepeatFirst: 280, tiltRepeat: 240,
+                 smile: 0.5, surprisedJaw: 0.4, surprisedBrow: 0.5 };
+
+/* ---------- INPUT LAYER ---------- */
+const input = {
+  pulse: { left:0, right:0, jump:0 },
+  kbBoost: false, faceBoost: false, touchBoost: false, buttonBoost: false,
+  fire(a)  { this.pulse[a] = 1; },
+  take(a)  { const n = this.pulse[a]; this.pulse[a] = 0; return n > 0; },
+  clear()  { this.pulse.left = this.pulse.right = this.pulse.jump = 0; },
+  get boost() { return this.kbBoost || this.faceBoost || this.touchBoost || this.buttonBoost; }
+};
+
+/* ---------- PHYSICAL DECK REACTIVE CONTROLS (JOYSTICK & BUTTONS) ---------- */
+const joystickStick = document.getElementById("joystickStick");
+const joystickMount = document.getElementById("joystickMount");
+const arrowL = document.getElementById("arrowL"), arrowR = document.getElementById("arrowR"), arrowU = document.getElementById("arrowU");
+const spaceBtn = document.getElementById("spaceBtn");
+const powerBtn = document.getElementById("powerBtn");
+const camBtn   = document.getElementById("camBtn");
+const soundBtn = document.getElementById("soundBtn");
+const micBtn   = document.getElementById("micBtn");
+
+// Visual feedback helpers
+function setJoystickVisual(dir) {
+  joystickStick.classList.remove("tilt-left", "tilt-right", "tilt-up");
+  arrowL.classList.remove("active");
+  arrowR.classList.remove("active");
+  arrowU.classList.remove("active");
+
+  if (dir === "left")  { joystickStick.classList.add("tilt-left"); arrowL.classList.add("active"); }
+  if (dir === "right") { joystickStick.classList.add("tilt-right"); arrowR.classList.add("active"); }
+  if (dir === "up")    { joystickStick.classList.add("tilt-up"); arrowU.classList.add("active"); }
+}
+
+function pulseButton(btn) {
+  btn.classList.add("pressed");
+  setTimeout(() => btn.classList.remove("pressed"), 160);
+}
+
+// Mouse / Touch Drag on Physical Joystick directly!
+let isDraggingJoy = false;
+joystickMount.addEventListener("pointerdown", e => {
+  isDraggingJoy = true;
+  handleJoystickPointer(e);
+});
+window.addEventListener("pointermove", e => {
+  if (isDraggingJoy) handleJoystickPointer(e);
+});
+window.addEventListener("pointerup", () => {
+  if (isDraggingJoy) {
+    isDraggingJoy = false;
+    setJoystickVisual(null);
+  }
+});
+
+function handleJoystickPointer(e) {
+  const rect = joystickMount.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx < -12) { input.fire("left"); setJoystickVisual("left"); }
+    else if (dx > 12) { input.fire("right"); setJoystickVisual("right"); }
+  } else {
+    if (dy < -12) { input.fire("jump"); setJoystickVisual("up"); pulseButton(spaceBtn); }
+  }
+}
+
+// Click handlers for physical deck buttons
+spaceBtn.addEventListener("click", () => {
+  initAudio();
+  input.fire("jump");
+  pulseButton(spaceBtn);
+});
+
+// Power button hold for boost
+powerBtn.addEventListener("pointerdown", () => {
+  initAudio();
+  input.buttonBoost = true;
+  powerBtn.classList.add("pressed");
+});
+window.addEventListener("pointerup", () => {
+  input.buttonBoost = false;
+  powerBtn.classList.remove("pressed");
+});
+
+// Camera button toggles Face Control
+camBtn.addEventListener("click", () => {
+  initAudio();
+  setFace(!face.on);
+});
+
+// Sound button toggles Audio
+soundBtn.addEventListener("click", () => {
+  toggleSound();
+});
+
+// Mic button toggles voice status
+let micActive = false;
+micBtn.addEventListener("click", () => {
+  micActive = !micActive;
+  micBtn.classList.toggle("off", !micActive);
+  statusEl.textContent = micActive ? "Voice Control: Listening for 'Jump', 'Left', 'Right'..." : "Voice Control muted.";
+});
+
+/* ---------- SOURCE 1: KEYBOARD CONTROLS (WIRED TO DECK) ---------- */
+addEventListener("keydown", e => {
+  initAudio();
+  if (e.repeat) return;
+  if (e.code === "ArrowLeft"  || e.code === "KeyA") {
+    input.fire("left");
+    setJoystickVisual("left");
+  }
+  if (e.code === "ArrowRight" || e.code === "KeyD") {
+    input.fire("right");
+    setJoystickVisual("right");
+  }
+  if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") {
+    input.fire("jump");
+    setJoystickVisual("up");
+    pulseButton(spaceBtn);
+    e.preventDefault();
+  }
+  if (e.key === "Shift") {
+    input.kbBoost = true;
+    powerBtn.classList.add("pressed");
+  }
+});
+
+addEventListener("keyup", e => {
+  if (e.code === "ArrowLeft" || e.code === "KeyA" || e.code === "ArrowRight" || e.code === "KeyD" || e.code === "ArrowUp" || e.code === "KeyW") {
+    setJoystickVisual(null);
+  }
+  if (e.key === "Shift") {
+    input.kbBoost = false;
+    powerBtn.classList.remove("pressed");
+  }
+});
+
+/* ---------- SOURCE 2: FACE TRACKING (MEDIAPIPE) ---------- */
+const video = document.getElementById("video"), statusEl = document.getElementById("status"),
+      hudAction = document.getElementById("hudAction");
+const face = { on:false, landmarker:null, lastTime:-1, tiltDir:null, nextFire:0,
+             tiltedUp:false, pitchBase:null, noseSpanBase:null, surprised:false, stream:null };
+
+async function loadModel() {
+  const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  face.landmarker = await FaceLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
+    runningMode: "VIDEO", numFaces: 1, outputFaceBlendshapes: true
+  });
+}
+
+function pollFace() {
+  if (!face.on || video.currentTime === face.lastTime) return;
+  face.lastTime = video.currentTime;
+  const res = face.landmarker.detectForVideo(video, performance.now());
+  if (!res.faceLandmarks.length) {
+    statusEl.textContent = "Searching for face. Keep camera illuminated!";
+    if (hudAction) { hudAction.style.display = "block"; hudAction.textContent = "SEARCHING"; }
+    return;
+  }
+
+  const lm = res.faceLandmarks[0];
+
+  // Head tilt left / right -> lane change (updates physical joystick too!)
+  const a = lm[33], b = lm[263];
+  const tilt = Math.atan2((b.y - a.y) * video.videoHeight, (b.x - a.x) * video.videoWidth) * 180 / Math.PI;
+  const eff = Math.abs(tilt) < CONFIG.tiltDeadZone ? 0 : tilt;
+  const norm = Math.max(-1, Math.min(1, eff / CONFIG.tiltMax));
+
+  const dir = norm <= -CONFIG.tiltTrigger ? "right" : norm >= CONFIG.tiltTrigger ? "left" : null;
+  const nowMs = performance.now();
+  if (dir) {
+    setJoystickVisual(dir);
+    if (dir !== face.tiltDir) {
+      input.fire(dir);
+      face.tiltDir = dir;
+      face.nextFire = nowMs + CONFIG.tiltRepeatFirst;
+    } else if (nowMs >= face.nextFire) {
+      input.fire(dir);
+      face.nextFire = nowMs + CONFIG.tiltRepeat;
+    }
+  } else if (Math.abs(norm) < CONFIG.tiltReset) {
+    face.tiltDir = null;
+    if (!isDraggingJoy) setJoystickVisual(null);
+  }
+
+  // Head pitch up (tilt up / chin up) -> jump (updates physical space button too!)
+  const forehead = lm[10], chin = lm[152];
+  const faceH = Math.max(1, (chin.y - forehead.y) * video.videoHeight);
+  const pitch = Math.atan2((forehead.z - chin.z) * video.videoHeight, faceH) * 180 / Math.PI;
+
+  const eyeMidY = (lm[33].y + lm[263].y) / 2;
+  const noseSpan = (lm[1].y - eyeMidY) / Math.max(0.01, chin.y - eyeMidY);
+
+  if (face.pitchBase === null) {
+    face.pitchBase = pitch;
+    face.noseSpanBase = noseSpan;
+  } else if (!face.tiltedUp) {
+    face.pitchBase += (pitch - face.pitchBase) * 0.015;
+    face.noseSpanBase += (noseSpan - face.noseSpanBase) * 0.015;
+  }
+
+  const pitchDiff = pitch - face.pitchBase;
+  const noseLift = face.noseSpanBase - noseSpan;
+  const tiltedUpNow = pitchDiff > 6.0 || noseLift > 0.048 || pitch > 8.5;
+
+  if (tiltedUpNow && !face.tiltedUp) {
+    input.fire("jump");
+    setJoystickVisual("up");
+    pulseButton(spaceBtn);
+  } else if (pitchDiff < 2.5 && noseLift < 0.02) {
+    face.tiltedUp = false;
+  }
+  if (tiltedUpNow) face.tiltedUp = true;
+
+  // Blendshapes (Smile boost & Surprised jump fallback)
+  const s = {};
+  for (const c of res.faceBlendshapes[0].categories) s[c.categoryName] = c.score;
+  const smile = (s.mouthSmileLeft + s.mouthSmileRight) / 2;
+  const surprisedNow = s.jawOpen > CONFIG.surprisedJaw && s.browInnerUp > CONFIG.surprisedBrow;
+  if (surprisedNow && !face.surprised) {
+    input.fire("jump");
+    pulseButton(spaceBtn);
+  }
+  face.surprised = surprisedNow;
+  input.faceBoost = smile > CONFIG.smile;
+  if (input.faceBoost) {
+    powerBtn.classList.add("pressed");
+  } else if (!input.kbBoost && !input.buttonBoost) {
+    powerBtn.classList.remove("pressed");
+  }
+
+  // Live HUD status
+  if (hudAction) {
+    hudAction.style.display = "block";
+    if (dir) {
+      hudAction.textContent = dir === "left" ? "◀ TILT LEFT" : "▶ TILT RIGHT";
+      statusEl.textContent = "Joystick tilted " + dir;
+    } else if (tiltedUpNow) {
+      hudAction.textContent = "▲ TILT UP (JUMP)";
+      statusEl.textContent = "Head tilted up: JUMP!";
+    } else if (input.faceBoost) {
+      hudAction.textContent = "🔥 SMILE (BOOST)";
+      statusEl.textContent = "Smile detected: POWER BOOST!";
+    } else {
+      hudAction.textContent = "AI TRACKING OK";
+      statusEl.textContent = "Camera tracking active: tilt head to move, tilt up to jump!";
+    }
+  }
+}
+
+async function setFace(on) {
+  if (!on) {
+    face.on = false; input.faceBoost = false;
+    if (face.stream) face.stream.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    camBtn.classList.add("off");
+    statusEl.textContent = "Camera off. Click 👁️ Camera button on deck to activate!";
+    if (hudAction) hudAction.style.display = "none";
+    return;
+  }
+  camBtn.disabled = true; statusEl.textContent = "Booting neural tracker...";
+  try {
+    if (!face.landmarker) await loadModel();
+    face.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = face.stream;
+    await new Promise(r => video.onloadeddata = r);
+    face.on = true; face.tiltDir = null; face.lastTime = -1;
+    face.tiltedUp = false; face.pitchBase = null; face.noseSpanBase = null;
+    camBtn.classList.remove("off");
+    statusEl.textContent = "Camera active: tilt head to move, tilt up to jump!";
+  } catch (e) {
+    statusEl.textContent = "Camera error: " + e.message;
+  }
+  camBtn.disabled = false;
+}
+
+/* ---------- PROCEDURAL WEB AUDIO ENGINE ---------- */
+let audioCtx = null, masterGain = null, bgmGain = null, sfxGain = null;
+let soundMuted = false, nextBgmTime = 0, bgmStep = 0;
+
+const CHORDS = [
+  [130.81, 196.00, 246.94, 329.63], // Cmaj7
+  [110.00, 164.81, 196.00, 261.63], // Am7
+  [87.31, 130.81, 164.81, 220.00],  // Fmaj7
+  [98.00, 146.83, 196.00, 246.94]   // G
+];
+const MELODY = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+
+function initAudio() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    audioCtx = new AudioContextClass();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(soundMuted ? 0 : 1, audioCtx.currentTime);
+    masterGain.connect(audioCtx.destination);
+
+    bgmGain = audioCtx.createGain();
+    bgmGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    bgmGain.connect(masterGain);
+
+    sfxGain = audioCtx.createGain();
+    sfxGain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+    sfxGain.connect(masterGain);
+
+    nextBgmTime = audioCtx.currentTime + 0.1;
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
+function toggleSound() {
+  initAudio();
+  soundMuted = !soundMuted;
+  if (masterGain && audioCtx) {
+    masterGain.gain.setValueAtTime(soundMuted ? 0 : 1, audioCtx.currentTime);
+  }
+  soundBtn.innerHTML = soundMuted ? "🔇" : "🔊";
+  soundBtn.classList.toggle("off", soundMuted);
+}
+
+function playBGMChord(notes, time) {
+  if (!audioCtx || soundMuted) return;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(550, time);
+  filter.connect(bgmGain);
+
+  const padGain = audioCtx.createGain();
+  padGain.gain.setValueAtTime(0.0001, time);
+  padGain.gain.linearRampToValueAtTime(0.045, time + 0.8);
+  padGain.gain.setValueAtTime(0.045, time + 1.8);
+  padGain.gain.exponentialRampToValueAtTime(0.0001, time + 2.5);
+  padGain.connect(filter);
+
+  notes.forEach(freq => {
+    const osc = audioCtx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, time);
+    osc.connect(padGain);
+    osc.start(time);
+    osc.stop(time + 2.55);
+  });
+}
+
+function playBGMChime(freq, time) {
+  if (!audioCtx || soundMuted) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, time);
+
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.linearRampToValueAtTime(0.025, time + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.2);
+
+  osc.connect(gain);
+  gain.connect(bgmGain);
+  osc.start(time);
+  osc.stop(time + 1.25);
+}
+
+function scheduleBGM() {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const lookahead = 0.5;
+  while (nextBgmTime < audioCtx.currentTime + lookahead) {
+    playBGMChord(CHORDS[bgmStep % CHORDS.length], nextBgmTime);
+    if (Math.random() < 0.75) {
+      const chimeFreq = MELODY[Math.floor(Math.random() * MELODY.length)];
+      playBGMChime(chimeFreq, nextBgmTime + (Math.random() < 0.5 ? 0.6 : 1.2));
+    }
+    nextBgmTime += 2.4;
+    bgmStep++;
+  }
+}
+
+function playLaneSound(dir = 1) {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(550, now);
+
+  osc.type = "triangle";
+  const startF = dir > 0 ? 300 : 420;
+  const endF = dir > 0 ? 460 : 280;
+  osc.frequency.setValueAtTime(startF, now);
+  osc.frequency.exponentialRampToValueAtTime(endF, now + 0.08);
+
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(sfxGain);
+
+  osc.start(now);
+  osc.stop(now + 0.1);
+}
+
+function playJumpSound() {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(240, now);
+  osc.frequency.exponentialRampToValueAtTime(620, now + 0.18);
+
+  gain.gain.setValueAtTime(0.24, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+  osc.connect(gain);
+  gain.connect(sfxGain);
+
+  osc.start(now);
+  osc.stop(now + 0.23);
+}
+
+function playHitSound() {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(150, now);
+  osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+
+  gain.gain.setValueAtTime(0.4, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+  osc.connect(gain);
+  gain.connect(sfxGain);
+  osc.start(now);
+  osc.stop(now + 0.4);
+
+  try {
+    const bufferSize = Math.floor(audioCtx.sampleRate * 0.18);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.04));
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(600, now);
+    filter.frequency.exponentialRampToValueAtTime(100, now + 0.18);
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.35, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(sfxGain);
+    noise.start(now);
+  } catch (e) {}
+}
+
+function playCoinSound() {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime;
+  [880, 1320].forEach((freq, idx) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+    gain.gain.setValueAtTime(0.18, now + idx * 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
+
+    osc.connect(gain);
+    gain.connect(sfxGain);
+    osc.start(now + idx * 0.06);
+    osc.stop(now + idx * 0.06 + 0.13);
+  });
+}
+
+/* ---------- SOURCE 3: TOUCH GESTURES (MOBILE) ---------- */
+const cv = document.getElementById("game"), ctx = cv.getContext("2d");
+let touchStartX = 0, touchStartY = 0, touchSwiped = false, holdBoostTimer = null;
+
+cv.addEventListener("touchstart", e => {
+  initAudio();
+  if (e.touches.length >= 2) input.touchBoost = true;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchSwiped = false;
+
+  clearTimeout(holdBoostTimer);
+  holdBoostTimer = setTimeout(() => {
+    if (!touchSwiped) input.touchBoost = true;
+  }, 350);
+}, { passive: false });
+
+cv.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (touchSwiped) return;
+  const t = e.touches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  const distSq = dx * dx + dy * dy;
+
+  if (distSq > 24 * 24) {
+    touchSwiped = true;
+    clearTimeout(holdBoostTimer);
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const d = dx > 0 ? "right" : "left";
+      input.fire(d);
+      setJoystickVisual(d);
+      setTimeout(() => setJoystickVisual(null), 180);
+    } else if (dy < 0) {
+      input.fire("jump");
+      setJoystickVisual("up");
+      pulseButton(spaceBtn);
+      setTimeout(() => setJoystickVisual(null), 180);
+    }
+  }
+}, { passive: false });
+
+cv.addEventListener("touchend", e => {
+  clearTimeout(holdBoostTimer);
+  if (e.touches.length < 2) input.touchBoost = false;
+
+  if (!touchSwiped && e.changedTouches.length > 0) {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.hypot(dx, dy) < 25) {
+      if (g.state !== "play") {
+        input.fire("jump");
+        pulseButton(spaceBtn);
+      } else {
+        const rect = cv.getBoundingClientRect();
+        const tapX = t.clientX - rect.left;
+        if (tapX < rect.width * 0.33) {
+          input.fire("left");
+          setJoystickVisual("left");
+          setTimeout(() => setJoystickVisual(null), 180);
+        } else if (tapX > rect.width * 0.67) {
+          input.fire("right");
+          setJoystickVisual("right");
+          setTimeout(() => setJoystickVisual(null), 180);
+        } else {
+          input.fire("jump");
+          setJoystickVisual("up");
+          pulseButton(spaceBtn);
+          setTimeout(() => setJoystickVisual(null), 180);
+        }
+      }
+    }
+  }
+  if (e.touches.length === 0) {
+    touchSwiped = false;
+    input.touchBoost = false;
+  }
+}, { passive: false });
+
+/* ---------- GAME ENGINE & SCREEN MODES ---------- */
+let W = cv.width, H = cv.height, LANES = 3, LW = W / LANES, PY = 395, JUMP_TIME = 0.7, BALL_RADIUS = 18;
+const laneX = i => LW * (i + 0.5);
+let g, best = 0;
+let currentMode = "pc";
+
+function setGameMode(mode) {
+  currentMode = mode;
+  const isPC = mode === "pc";
+  if (isPC) {
+    cv.width = 720;
+    cv.height = 480;
+    PY = 395;
+  } else {
+    cv.width = 360;
+    cv.height = 560;
+    PY = 475;
+  }
+  W = cv.width;
+  H = cv.height;
+  LW = W / LANES;
+
+  document.body.classList.toggle("mode-pc", isPC);
+  document.body.classList.toggle("mode-mobile", !isPC);
+
+  const pcBtn = document.getElementById("modePcBtn");
+  const mobBtn = document.getElementById("modeMobileBtn");
+  if (pcBtn && mobBtn) {
+    pcBtn.classList.toggle("active", isPC);
+    mobBtn.classList.toggle("active", !isPC);
+  }
+
+  if (g) {
+    g.x = laneX(g.lane);
+  }
+}
+
+document.getElementById("modePcBtn").addEventListener("click", () => setGameMode("pc"));
+document.getElementById("modeMobileBtn").addEventListener("click", () => setGameMode("mobile"));
+
+// Auto-detect device mode on startup
+if (window.innerWidth <= 768) {
+  setGameMode("mobile");
+} else {
+  setGameMode("pc");
+}
+
+/* ---------- PARTICLE & SHAKE FX SYSTEM ---------- */
+let particles = [];
+let shake = 0, shakeTime = 0;
+const SHAKE_DURATION = 0.55;
+
+function spawnCoinParticles(x, y) {
+  for (let i = 0; i < 14; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 70 + Math.random() * 140;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.55,
+      maxLife: 0.55,
+      color: Math.random() < 0.5 ? "#10b981" : "#f59e0b",
+      size: 3 + Math.random() * 3
+    });
+  }
+}
+
+function spawnHitParticles(x, y) {
+  shake = SHAKE_DURATION;
+  shakeTime = 0;
+  for (let i = 0; i < 24; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 80 + Math.random() * 220;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.7,
+      maxLife: 0.7,
+      color: Math.random() < 0.6 ? "#ef4444" : "#f59e0b",
+      size: 4 + Math.random() * 4
+    });
+  }
+}
+
+function spawnTrailParticle(x, y) {
+  particles.push({
+    x: x + (Math.random() - 0.5) * 8,
+    y: y + 10,
+    vx: (Math.random() - 0.5) * 30,
+    vy: 60 + Math.random() * 40,
+    life: 0.25,
+    maxLife: 0.25,
+    color: "#f59e0b",
+    size: 3 + Math.random() * 2
+  });
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = Math.max(0, p.life / p.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ---------- HITBOX DETECTION ---------- */
+function checkBallObstacleHit(ballX, ballY, ballR, o) {
+  const h = o.low ? 24 : 46;
+  const halfW = currentMode === "pc" ? 42 : 36;
+  const oLeft = laneX(o.lane) - halfW;
+  const oRight = laneX(o.lane) + halfW;
+  const oTop = o.y - h / 2;
+  const oBottom = o.y + h / 2;
+
+  const closestX = Math.max(oLeft, Math.min(ballX, oRight));
+  const closestY = Math.max(oTop, Math.min(ballY, oBottom));
+
+  const dx = ballX - closestX;
+  const dy = ballY - closestY;
+  return (dx * dx + dy * dy) < (ballR * ballR);
+}
+
+function checkBallCoinHit(ballX, ballY, ballR, c) {
+  const dx = ballX - laneX(c.lane);
+  const dy = ballY - c.y;
+  const r = ballR + 12;
+  return (dx * dx + dy * dy) < (r * r);
+}
+
+function reset(state = "ready") {
+  g = { state, lane:1, x:laneX(1), jumpT:0, t:0, score:0, spawn:0.8, obs:[], coins:[], scroll:0, overAt:0 };
+  shake = 0;
+  shakeTime = 0;
+  input.clear();
+}
+reset();
+
+function spawnRow() {
+  const lane = Math.floor(Math.random() * LANES);
+  g.obs.push({ lane, y:-40, low: Math.random() < 0.5 });
+  if (Math.random() < 0.6) {
+    const other = (lane + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
+    g.coins.push({ lane:other, y:-40 });
+  }
+}
+
+function update(dt) {
+  const goPress = input.take("jump");
+  if (g.state === "ready") { input.take("left"); input.take("right"); if (goPress) reset("play"); return; }
+  if (g.state === "over") {
+    shake = Math.max(0, shake - dt);
+    shakeTime += dt;
+    updateParticles(dt);
+    input.take("left"); input.take("right");
+    if (goPress && performance.now() - g.overAt > 600) reset("play");
+    return;
+  }
+  if (goPress && g.jumpT <= 0) {
+    g.jumpT = JUMP_TIME;
+    playJumpSound();
+  }
+  if (input.take("left")) {
+    const prev = g.lane;
+    g.lane = Math.max(0, g.lane - 1);
+    if (g.lane !== prev) playLaneSound(-1);
+  }
+  if (input.take("right")) {
+    const prev = g.lane;
+    g.lane = Math.min(LANES - 1, g.lane + 1);
+    if (g.lane !== prev) playLaneSound(1);
+  }
+  g.x += (laneX(g.lane) - g.x) * Math.min(1, dt * 14);
+  g.jumpT = Math.max(0, g.jumpT - dt);
+
+  g.t += dt;
+  const boost = input.boost;
+  const speed = (280 + g.t * 8) * (boost ? 1.35 : 1);
+  g.scroll = (g.scroll + speed * dt) % 40;
+  g.score += dt * 10 * (boost ? 2 : 1);
+
+  if (boost && Math.random() < 0.6) {
+    spawnTrailParticle(g.x, PY);
+  }
+
+  g.spawn -= dt * (boost ? 1.35 : 1);
+  if (g.spawn <= 0) { spawnRow(); g.spawn = Math.max(0.45, 1.0 - g.t * 0.01); }
+
+  const airborne = g.jumpT > 0.1;
+  for (const o of g.obs) {
+    o.y += speed * dt;
+    if (checkBallObstacleHit(g.x, PY, BALL_RADIUS, o) && !(o.low && airborne)) {
+      g.state = "over";
+      g.overAt = performance.now();
+      best = Math.max(best, Math.floor(g.score));
+      input.clear();
+      playHitSound();
+      spawnHitParticles(g.x, PY);
+    }
+  }
+  for (const c of g.coins) {
+    c.y += speed * dt;
+    if (!c.got && checkBallCoinHit(g.x, PY, BALL_RADIUS, c)) {
+      c.got = true;
+      g.score += 25;
+      playCoinSound();
+      spawnCoinParticles(laneX(c.lane), c.y);
+    }
+  }
+  g.obs = g.obs.filter(o => o.y < H + 50);
+  g.coins = g.coins.filter(c => c.y < H + 50 && !c.got);
+
+  shake = Math.max(0, shake - dt);
+  shakeTime += dt;
+  updateParticles(dt);
+}
+
+function draw() {
+  ctx.save();
+
+  // Screen shake: strong start, frequency/amplitude decay, stops completely
+  if (shake > 0) {
+    const progress = shake / SHAKE_DURATION;
+    const amp = Math.pow(progress, 1.6) * 14;
+    const currentFreq = 8 + 28 * progress;
+    const angle = shakeTime * currentFreq * Math.PI * 2;
+    const sx = Math.sin(angle) * amp + (Math.random() - 0.5) * amp * 0.35;
+    const sy = Math.cos(angle * 1.3) * amp * 0.75 + (Math.random() - 0.5) * amp * 0.35;
+    ctx.translate(sx, sy);
+  }
+
+  // Clear & Retro Arcade CRT Screen background
+  ctx.clearRect(0, 0, W, H);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, "#08060c");
+  grad.addColorStop(1, "#120a17");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Retro Neon Lane dividers
+  ctx.strokeStyle = "rgba(225, 29, 72, 0.28)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([20, 20]);
+  ctx.lineDashOffset = -g.scroll;
+  for (let i = 1; i < LANES; i++) {
+    ctx.beginPath();
+    ctx.moveTo(LW * i, 0);
+    ctx.lineTo(LW * i, H);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Outer neon rails
+  ctx.strokeStyle = "#e11d48";
+  ctx.lineWidth = 3;
+  ctx.shadowColor = "#e11d48";
+  ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(2, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W - 2, 0); ctx.lineTo(W - 2, H); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Obstacles
+  for (const o of g.obs) {
+    const halfW = currentMode === "pc" ? 42 : 36;
+    const h = o.low ? 24 : 46;
+    const ox = laneX(o.lane) - halfW;
+    const oy = o.y - h / 2;
+
+    ctx.save();
+    if (o.low) {
+      // Blue hurdle
+      ctx.fillStyle = "#0284c7";
+      ctx.strokeStyle = "#38bdf8";
+      ctx.shadowColor = "#38bdf8";
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2;
+      ctx.fillRect(ox, oy, halfW * 2, h);
+      ctx.strokeRect(ox, oy, halfW * 2, h);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 9px 'Press Start 2P'";
+      ctx.textAlign = "center";
+      ctx.fillText("▲ JUMP", laneX(o.lane), o.y + 4);
+    } else {
+      // Red block
+      ctx.fillStyle = "#dc2626";
+      ctx.strokeStyle = "#f43f5e";
+      ctx.shadowColor = "#f43f5e";
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.fillRect(ox, oy, halfW * 2, h);
+      ctx.strokeRect(ox, oy, halfW * 2, h);
+
+      // Warning stripes
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 2;
+      for (let s = -halfW + 10; s < halfW; s += 16) {
+        ctx.beginPath();
+        ctx.moveTo(laneX(o.lane) + s, oy + 4);
+        ctx.lineTo(laneX(o.lane) + s + 10, oy + h - 4);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Coins
+  for (const c of g.coins) {
+    ctx.save();
+    ctx.shadowColor = "#10b981";
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#10b981";
+    ctx.beginPath();
+    ctx.arc(laneX(c.lane), c.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.arc(laneX(c.lane), c.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Particles
+  drawParticles();
+
+  // Player Ball
+  const p = 1 - g.jumpT / JUMP_TIME;
+  const lift = g.jumpT > 0 ? Math.sin(Math.PI * p) * 55 : 0;
+  const isBoost = input.boost && g.state === "play";
+
+  // Ground shadow
+  const shadowScale = Math.max(0.4, 1 - lift / 80);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+  ctx.beginPath();
+  ctx.ellipse(g.x, PY + 22, 22 * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ball Sphere
+  ctx.save();
+  ctx.shadowColor = isBoost ? "#f59e0b" : "#e11d48";
+  ctx.shadowBlur = isBoost ? 24 : 16;
+
+  const ballGrad = ctx.createRadialGradient(g.x - 6, PY - lift - 6, 2, g.x, PY - lift, 20);
+  if (isBoost) {
+    ballGrad.addColorStop(0, "#fffbeb");
+    ballGrad.addColorStop(0.4, "#fbbf24");
+    ballGrad.addColorStop(1, "#d97706");
+  } else {
+    ballGrad.addColorStop(0, "#ffe4e6");
+    ballGrad.addColorStop(0.35, "#f43f5e");
+    ballGrad.addColorStop(1, "#9f1239");
+  }
+  ctx.fillStyle = ballGrad;
+  ctx.beginPath();
+  ctx.arc(g.x, PY - lift, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Retro Blocky In-Game HUD
+  ctx.font = "12px 'Press Start 2P'";
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "left";
+  ctx.fillText("SCORE " + Math.floor(g.score), 20, 36);
+
+  if (isBoost) {
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "10px 'Press Start 2P'";
+    ctx.fillText("2X BOOST!", 20, 56);
+  }
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#f43f5e";
+  ctx.fillText("HIGH " + best, W - 20, 36);
+
+  // Ready / Game Over Overlay Screens
+  if (g.state !== "play") {
+    ctx.fillStyle = "rgba(7, 3, 10, 0.88)";
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign = "center";
+    ctx.font = "24px 'Press Start 2P'";
+    ctx.fillStyle = g.state === "ready" ? "#00f2fe" : "#ef4444";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 14;
+    ctx.fillText(g.state === "ready" ? "INSERT COIN" : "GAME OVER", W / 2, H / 2 - 30);
+    ctx.shadowBlur = 0;
+
+    if (g.state === "over") {
+      ctx.font = "12px 'Press Start 2P'";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("SCORE: " + Math.floor(g.score), W / 2, H / 2 + 8);
+    }
+
+    ctx.font = "10px 'Press Start 2P'";
+    ctx.fillStyle = "#94a3b8";
+    const promptText = g.state === "ready" ? "PRESS SPACE OR JUMP" : "PRESS SPACE TO RETRY";
+    ctx.fillText(promptText, W / 2, H / 2 + (g.state === "over" ? 42 : 14));
+  }
+
+  ctx.restore();
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  scheduleBGM();
+  pollFace();
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+
+<script>
+/* ---------- QR CODE: Google Charts API ---------- */
+(function () {
+  const img = document.getElementById("qrImg");
+  const input = document.getElementById("qrUrlInput");
+  const btn = document.getElementById("qrRegenBtn");
+
+  function buildQR(url) {
+    if (!url || !url.trim()) return;
+    const encoded = encodeURIComponent(url.trim());
+    img.src = "https://chart.googleapis.com/chart?chs=108x108&cht=qr&chl=" + encoded + "&choe=UTF-8&chld=M|1";
+  }
+
+  const currentURL = window.location.href;
+  if (currentURL.startsWith("file://")) {
+    img.src = "https://chart.googleapis.com/chart?chs=108x108&cht=qr&chl=" +
+      encodeURIComponent("Enter your server URL below") + "&choe=UTF-8&chld=M|1";
+  } else {
+    input.value = currentURL;
+    buildQR(currentURL);
+  }
+
+  btn.addEventListener("click", () => buildQR(input.value));
+  input.addEventListener("keydown", e => { if (e.key === "Enter") buildQR(input.value); });
+})();
+</script>
+</body>
+</html>
