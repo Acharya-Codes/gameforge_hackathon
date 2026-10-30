@@ -1335,6 +1335,7 @@ cv.addEventListener("touchstart", e => {
 
 cv.addEventListener("touchmove", e => {
   e.preventDefault();
+  if (touchSwiped) return; // one swipe = one lane move
   const t = e.touches[0];
   const dx = t.clientX - touchStartX;
   const dy = t.clientY - touchStartY;
@@ -1342,8 +1343,6 @@ cv.addEventListener("touchmove", e => {
 
   if (distSq > 12 * 12) {
     touchSwiped = true;
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
     clearTimeout(holdBoostTimer);
     if (Math.abs(dx) > Math.abs(dy)) {
       const d = dx > 0 ? "right" : "left";
