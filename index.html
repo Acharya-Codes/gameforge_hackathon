@@ -601,34 +601,32 @@
   .qr-box {
     background: #ffffff;
     border-radius: 6px;
-    padding: 4px;
+    padding: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
   }
-  .qr-box img { width: 96px; height: 96px; display: block; }
-  .qr-input {
+  .qr-box:hover {
+    transform: scale(1.04);
+    box-shadow: 0 0 12px rgba(225, 29, 72, 0.6);
+  }
+  .qr-box img { width: 96px; height: 96px; display: block; border-radius: 4px; }
+  .qr-url-text {
     font-family: var(--sub-font);
-    font-size: 9px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid #4a154b;
-    border-radius: 4px;
-    color: #fff;
-    padding: 4px;
-    width: 104px;
+    font-size: 8px;
+    color: var(--silksong-silk);
     text-align: center;
-    outline: none;
+    max-width: 104px;
+    word-break: break-all;
+    line-height: 1.2;
+    text-shadow: 0 0 6px rgba(225, 29, 72, 0.4);
   }
-  .qr-btn {
-    font-family: var(--arcade-font);
+  .qr-scan-hint {
     font-size: 7px;
-    background: var(--silksong-crimson);
-    border: 0;
-    color: #fff;
-    padding: 4px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    width: 104px;
+    color: #94a3b8;
+    text-align: center;
   }
   body.mode-mobile .qr-widget { display: none; }
   @media (max-width: 820px) {
@@ -782,11 +780,11 @@
 <!-- QR Code Widget (Fixed Bottom-Left) -->
 <div class="qr-widget" id="qrWidget">
   <div class="qr-label">📱 PLAY ON MOBILE</div>
-  <div class="qr-box">
-    <img id="qrImg" src="" alt="QR">
-  </div>
-  <input id="qrUrlInput" class="qr-input" type="text" placeholder="http://192.168.x.x:5500" spellcheck="false">
-  <button id="qrRegenBtn" class="qr-btn">GENERATE QR</button>
+  <a href="https://opthalmos.netlify.app/" target="_blank" rel="noopener noreferrer" class="qr-box" title="Open https://opthalmos.netlify.app/">
+    <img id="qrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=0&data=https%3A%2F%2Fopthalmos.netlify.app%2F" alt="QR Code for https://opthalmos.netlify.app/" onerror="this.onerror=null;this.src='https://chart.googleapis.com/chart?chs=108x108&cht=qr&chl=https%3A%2F%2Fopthalmos.netlify.app%2F&choe=UTF-8&chld=M|1';">
+  </a>
+  <div class="qr-url-text">opthalmos.netlify.app</div>
+  <div class="qr-scan-hint">Scan with phone camera</div>
 </div>
 
 <script type="module">
@@ -1805,29 +1803,16 @@ requestAnimationFrame(frame);
 </script>
 
 <script>
-/* ---------- QR CODE: Google Charts API ---------- */
+/* ---------- QR CODE: Direct to opthalmos.netlify.app ---------- */
 (function () {
+  const TARGET_URL = "https://opthalmos.netlify.app/";
   const img = document.getElementById("qrImg");
-  const input = document.getElementById("qrUrlInput");
-  const btn = document.getElementById("qrRegenBtn");
-
-  function buildQR(url) {
-    if (!url || !url.trim()) return;
-    const encoded = encodeURIComponent(url.trim());
+  if (!img) return;
+  const encoded = encodeURIComponent(TARGET_URL);
+  img.src = "https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=0&data=" + encoded;
+  img.onerror = () => {
     img.src = "https://chart.googleapis.com/chart?chs=108x108&cht=qr&chl=" + encoded + "&choe=UTF-8&chld=M|1";
-  }
-
-  const currentURL = window.location.href;
-  if (currentURL.startsWith("file://")) {
-    img.src = "https://chart.googleapis.com/chart?chs=108x108&cht=qr&chl=" +
-      encodeURIComponent("Enter your server URL below") + "&choe=UTF-8&chld=M|1";
-  } else {
-    input.value = currentURL;
-    buildQR(currentURL);
-  }
-
-  btn.addEventListener("click", () => buildQR(input.value));
-  input.addEventListener("keydown", e => { if (e.key === "Enter") buildQR(input.value); });
+  };
 })();
 </script>
 </body>
