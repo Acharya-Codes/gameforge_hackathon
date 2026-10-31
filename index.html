@@ -652,6 +652,138 @@
     .qr-widget { display: none; }
     .marquee-text { font-size: 14px; letter-spacing: 2px; }
   }
+
+  /* START + TRANSFORM action row */
+  .deck-action-row {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .deck-action-row .btn-start {
+    flex: 1 1 200px;
+    max-width: none;
+    margin: 0;
+  }
+  .btn-transform {
+    flex: 1 1 200px;
+    height: 44px;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 30%, #c084fc 0%, #a855f7 60%, #6b21a8 100%);
+    border: 3px solid #7e22ce;
+    box-shadow: 0 6px 0 #3b0764, 0 8px 15px rgba(0, 0, 0, 0.6), 0 0 18px rgba(168, 85, 247, 0.4);
+    font-family: var(--arcade-font);
+    font-size: 10px;
+    color: #fff;
+    letter-spacing: 1px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-transform:active {
+    box-shadow: 0 2px 0 #3b0764, 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.7) !important;
+  }
+
+  /* TRANSFORM EXPERIENCE dashboard */
+  .tx-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: flex-start;
+    background: rgba(4, 2, 8, 0.86);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 12px 28px;
+  }
+  .tx-overlay.open { display: flex; }
+  .tx-panel {
+    position: relative;
+    width: 100%;
+    max-width: 780px;
+    margin: auto;
+    background: #0a0d15;
+    border: 3px solid var(--silksong-crimson);
+    border-radius: 14px;
+    box-shadow: 0 0 40px rgba(225, 29, 72, 0.35), 0 20px 50px rgba(0, 0, 0, 0.8);
+    padding: 18px;
+  }
+  .tx-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--btn-red);
+    background: #1a0b10;
+    color: #fff;
+    font-family: var(--arcade-font);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .tx-close:hover, .tx-close:focus-visible { background: var(--btn-red); outline: none; }
+  .tx-title {
+    font-family: var(--arcade-font);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--silksong-silk);
+    margin: 0 52px 6px 0;
+    text-shadow: 0 0 10px rgba(225, 29, 72, 0.6);
+  }
+  .tx-sub { margin: 0 0 14px; font-size: 11px; line-height: 1.5; color: #94a3b8; max-width: 56ch; }
+  .tx-presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .tx-presets > span { font-family: var(--arcade-font); font-size: 8px; color: #94a3b8; margin-right: 4px; }
+  .tx-chip {
+    font-family: var(--arcade-font);
+    font-size: 8px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 2px solid #334155;
+    background: #11151f;
+    color: #e2e8f0;
+    cursor: pointer;
+  }
+  .tx-chip:hover, .tx-chip:focus-visible { border-color: var(--btn-purple); outline: none; }
+  .tx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+  .tx-card { background: #11151f; border: 2px solid #1f293d; border-radius: 10px; padding: 14px 14px 4px; }
+  .tx-card h3 { font-family: var(--arcade-font); font-size: 9px; line-height: 1.4; color: #38bdf8; margin: 0 0 12px; }
+  .tx-card.mood h3 { color: var(--btn-purple); }
+  .tx-row { margin-bottom: 14px; }
+  .tx-row label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; color: #cbd5e1; margin-bottom: 4px; }
+  .tx-row output { font-family: var(--arcade-font); font-size: 8px; color: var(--silksong-gold); }
+  .tx-range { width: 100%; height: 30px; margin: 0; accent-color: var(--silksong-crimson); touch-action: pan-y; cursor: pointer; }
+  .tx-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: #cbd5e1; }
+  .tx-switch { width: 52px; height: 28px; border-radius: 14px; border: 2px solid #475569; background: #1e293b; position: relative; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .tx-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #94a3b8; transition: transform 0.15s; }
+  .tx-switch[aria-checked="true"] { background: #581c87; border-color: var(--btn-purple); }
+  .tx-switch[aria-checked="true"]::after { transform: translateX(24px); background: #f5d0fe; }
+  .tx-switch:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .tx-meter { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px; color: #cbd5e1; }
+  .tx-meter > span { width: 44px; flex-shrink: 0; }
+  .tx-bar { flex: 1; height: 10px; background: #0b0e16; border: 1px solid #334155; border-radius: 5px; overflow: hidden; }
+  .tx-bar i { display: block; height: 100%; width: 0; }
+  .tx-bar i.strain { background: #38bdf8; }
+  .tx-bar i.joy { background: var(--silksong-gold); }
+  .tx-note { font-size: 10px; line-height: 1.5; color: #94a3b8; margin: 0 0 14px; }
+  .tx-foot { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .tx-btn {
+    font-family: var(--arcade-font);
+    font-size: 9px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 2px solid var(--btn-purple);
+    background: #581c87;
+    color: #fff;
+    cursor: pointer;
+  }
+  .tx-btn.ghost { background: transparent; border-color: #475569; color: #cbd5e1; }
+  .tx-btn:hover, .tx-btn:focus-visible { filter: brightness(1.2); outline: none; }
 </style>
 </head>
 <body class="mode-pc">
@@ -706,7 +838,10 @@
     <div class="control-deck">
       <div class="deck-title">★ AACHI'S GAMESLOT ★</div>
 
-      <button id="startBtn" class="arcade-btn btn-start">▶ START THE GAME</button>
+      <div class="deck-action-row">
+        <button id="startBtn" class="arcade-btn btn-start">▶ START THE GAME</button>
+        <button id="txOpenBtn" class="arcade-btn btn-transform" aria-haspopup="dialog">⚙ TRANSFORM EXPERIENCE</button>
+      </div>
 
       <div class="deck-controls-row">
         <!-- LEFT: MOVING JOYSTICK -->
@@ -808,6 +943,26 @@
   <div class="qr-scan-hint">Scan with phone camera</div>
 </div>
 
+<!-- TRANSFORM EXPERIENCE dashboard -->
+<div class="tx-overlay" id="txOverlay" role="dialog" aria-modal="true" aria-labelledby="txTitle" aria-hidden="true">
+  <div class="tx-panel">
+    <button class="tx-close" id="txClose" aria-label="Close Transform experience">✕</button>
+    <h2 class="tx-title" id="txTitle">TRANSFORM EXPERIENCE</h2>
+    <p class="tx-sub">Tune the game to your body, mood and style. Changes apply instantly, and the game is paused while this is open.</p>
+    <div class="tx-presets" id="txPresets">
+      <span>QUICK STYLE</span>
+      <button class="tx-chip" data-preset="relaxed">Relaxed</button>
+      <button class="tx-chip" data-preset="classic">Classic</button>
+      <button class="tx-chip" data-preset="intense">Intense</button>
+    </div>
+    <div class="tx-grid" id="txBody"></div>
+    <div class="tx-foot">
+      <button class="tx-btn ghost" id="txReset">Reset to defaults</button>
+      <button class="tx-btn" id="txResume">Resume game</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { FaceLandmarker, FilesetResolver }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
@@ -816,6 +971,31 @@ import { FaceLandmarker, FilesetResolver }
 const CONFIG = { tiltDeadZone: 2, tiltMax: 14, tiltTrigger: 0.35, tiltReset: 0.16,
                  tiltRepeatFirst: 280, tiltRepeat: 240,
                  smile: 0.5, surprisedJaw: 0.4, surprisedBrow: 0.5 };
+
+/* ---------- MUSIC HOOK: ADD YOUR OWN TRACKS HERE ----------
+   Put your audio files next to this page (for example in a "music" folder) and type the paths below.
+   calm   = plays when the player is strained or the run is just starting
+   normal = plays during a steady run
+   intense = plays at high speed or when the player is happy
+   You can fill only one (it will play all the time) or all three (the game crossfades between them).
+   Leave all three empty to use the built-in procedural music, which also adapts to speed and mood.   */
+const MUSIC_FILES = { calm: "", normal: "", intense: "" };
+
+/* ---------- TRANSFORM EXPERIENCE: PLAYER-TUNABLE SETTINGS ---------- */
+const TX_DEFAULTS = {
+  speed: 1, density: 1, jump: 0.7, boostMul: 1.35, coinRate: 0.6,
+  tiltSens: 5, jumpSens: 5, smileSens: 5, swipeSens: 5,
+  adapt: true, adaptStrength: 0.6, moodSens: 5,
+  musicVol: 0.5, sfxVol: 0.7, shakeAmt: 1, hue: 0
+};
+const tx = Object.assign({}, TX_DEFAULTS);
+try {
+  const saved = JSON.parse(localStorage.getItem("aachiTx") || "{}");
+  for (const k in TX_DEFAULTS) if (typeof saved[k] === typeof TX_DEFAULTS[k]) tx[k] = saved[k];
+} catch (e) {}
+let txOpen = false, swipeDist = 12, jumpFactor = 1;
+const mood = { stress: 0, joy: 0, tStress: 0, tJoy: 0, seen: 0, perf: 0, speedMul: 1, spawnMul: 1, label: "STEADY" };
+const music = { intensity: 0.15 };
 
 /* ---------- INPUT LAYER ---------- */
 const input = {
@@ -935,6 +1115,7 @@ micBtn.addEventListener("click", () => {
 /* ---------- SOURCE 1: KEYBOARD CONTROLS (WIRED TO DECK) ---------- */
 addEventListener("keydown", e => {
   initAudio();
+  if (txOpen) { if (e.code === "Escape") closeTx(); return; }
   if (e.repeat) return;
   if (e.code === "ArrowLeft"  || e.code === "KeyA") {
     input.fire("left");
@@ -1033,13 +1214,13 @@ function pollFace() {
 
   const pitchDiff = pitch - face.pitchBase;
   const noseLift = face.noseSpanBase - noseSpan;
-  const tiltedUpNow = pitchDiff > 6.0 || noseLift > 0.048 || pitch > 8.5;
+  const tiltedUpNow = pitchDiff > 6.0 / jumpFactor || noseLift > 0.048 / jumpFactor || pitch > 8.5 / jumpFactor;
 
   if (tiltedUpNow && !face.tiltedUp) {
     input.fire("jump");
     setJoystickVisual("up");
     pulseButton(spaceBtn);
-  } else if (pitchDiff < 2.5 && noseLift < 0.02) {
+  } else if (pitchDiff < 2.5 / jumpFactor && noseLift < 0.02 / jumpFactor) {
     face.tiltedUp = false;
   }
   if (tiltedUpNow) face.tiltedUp = true;
@@ -1048,6 +1229,7 @@ function pollFace() {
   const s = {};
   for (const c of res.faceBlendshapes[0].categories) s[c.categoryName] = c.score;
   const smile = (s.mouthSmileLeft + s.mouthSmileRight) / 2;
+  feedMood(s, smile);
   const surprisedNow = s.jawOpen > CONFIG.surprisedJaw && s.browInnerUp > CONFIG.surprisedBrow;
   if (surprisedNow && !face.surprised) {
     input.fire("jump");
@@ -1129,11 +1311,11 @@ function initAudio() {
     masterGain.connect(audioCtx.destination);
 
     bgmGain = audioCtx.createGain();
-    bgmGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    bgmGain.gain.setValueAtTime(tx.musicVol, audioCtx.currentTime);
     bgmGain.connect(masterGain);
 
     sfxGain = audioCtx.createGain();
-    sfxGain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+    sfxGain.gain.setValueAtTime(tx.sfxVol, audioCtx.currentTime);
     sfxGain.connect(masterGain);
 
     nextBgmTime = audioCtx.currentTime + 0.1;
@@ -1141,6 +1323,7 @@ function initAudio() {
   if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
+  startMusicFiles();
 }
 
 function toggleSound() {
@@ -1153,18 +1336,18 @@ function toggleSound() {
   soundBtn.classList.toggle("off", soundMuted);
 }
 
-function playBGMChord(notes, time) {
+function playBGMChord(notes, time, dur = 2.4) {
   if (!audioCtx || soundMuted) return;
   const filter = audioCtx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(550, time);
+  filter.frequency.setValueAtTime(550 + 700 * music.intensity, time);
   filter.connect(bgmGain);
 
   const padGain = audioCtx.createGain();
   padGain.gain.setValueAtTime(0.0001, time);
   padGain.gain.linearRampToValueAtTime(0.045, time + 0.8);
-  padGain.gain.setValueAtTime(0.045, time + 1.8);
-  padGain.gain.exponentialRampToValueAtTime(0.0001, time + 2.5);
+  padGain.gain.setValueAtTime(0.045, time + Math.max(1, dur - 0.6));
+  padGain.gain.exponentialRampToValueAtTime(0.0001, time + dur + 0.1);
   padGain.connect(filter);
 
   notes.forEach(freq => {
@@ -1173,7 +1356,7 @@ function playBGMChord(notes, time) {
     osc.frequency.setValueAtTime(freq, time);
     osc.connect(padGain);
     osc.start(time);
-    osc.stop(time + 2.55);
+    osc.stop(time + dur + 0.15);
   });
 }
 
@@ -1194,16 +1377,83 @@ function playBGMChime(freq, time) {
   osc.stop(time + 1.25);
 }
 
+const ARP_PATTERN = [0, 1, 2, 3, 2, 1, 3, 2];
+let noiseBuf = null;
+
+function playBeatPattern(chord, t0, beat) {
+  const it = music.intensity, eighth = beat / 2;
+  if (!noiseBuf) {
+    noiseBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.06), audioCtx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  for (let i = 0; i < 8; i++) {
+    const t = t0 + i * eighth;
+
+    // chiptune arpeggio
+    const o = audioCtx.createOscillator(), ag = audioCtx.createGain(), af = audioCtx.createBiquadFilter();
+    o.type = "square";
+    o.frequency.setValueAtTime(chord[ARP_PATTERN[i]] * 2, t);
+    af.type = "lowpass";
+    af.frequency.setValueAtTime(900 + 1800 * it, t);
+    ag.gain.setValueAtTime(0.0001, t);
+    ag.gain.linearRampToValueAtTime(0.014 + 0.014 * it, t + 0.01);
+    ag.gain.exponentialRampToValueAtTime(0.0001, t + eighth * 0.9);
+    o.connect(af); af.connect(ag); ag.connect(bgmGain);
+    o.start(t); o.stop(t + eighth);
+
+    // bass
+    if (i === 0 || i === 4 || (i === 6 && it > 0.6)) {
+      const b = audioCtx.createOscillator(), bg = audioCtx.createGain();
+      b.type = "triangle";
+      b.frequency.setValueAtTime(chord[0], t);
+      bg.gain.setValueAtTime(0.0001, t);
+      bg.gain.linearRampToValueAtTime(0.07, t + 0.02);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + beat * 0.9);
+      b.connect(bg); bg.connect(bgmGain);
+      b.start(t); b.stop(t + beat);
+    }
+
+    // kick
+    if (it > 0.3 && (i === 0 || i === 4 || (it > 0.65 && (i === 2 || i === 6)))) {
+      const k = audioCtx.createOscillator(), kg = audioCtx.createGain();
+      k.type = "sine";
+      k.frequency.setValueAtTime(150, t);
+      k.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      kg.gain.setValueAtTime(0.16, t);
+      kg.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      k.connect(kg); kg.connect(bgmGain);
+      k.start(t); k.stop(t + 0.18);
+    }
+
+    // hi-hat
+    if (it > 0.5 && i % 2 === 1) {
+      const n = audioCtx.createBufferSource(), nf = audioCtx.createBiquadFilter(), ng = audioCtx.createGain();
+      n.buffer = noiseBuf;
+      nf.type = "highpass";
+      nf.frequency.setValueAtTime(7000, t);
+      ng.gain.setValueAtTime(0.03, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      n.connect(nf); nf.connect(ng); ng.connect(bgmGain);
+      n.start(t);
+    }
+  }
+}
+
 function scheduleBGM() {
-  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  if (!audioCtx || soundMuted || audioCtx.state !== "running" || musicFilesActive()) return;
   const lookahead = 0.5;
   while (nextBgmTime < audioCtx.currentTime + lookahead) {
-    playBGMChord(CHORDS[bgmStep % CHORDS.length], nextBgmTime);
+    const beat = 60 / (92 + 28 * music.intensity);
+    const bar = beat * 4;
+    const chord = CHORDS[bgmStep % CHORDS.length];
+    playBGMChord(chord, nextBgmTime, bar);
     if (Math.random() < 0.75) {
       const chimeFreq = MELODY[Math.floor(Math.random() * MELODY.length)];
-      playBGMChime(chimeFreq, nextBgmTime + (Math.random() < 0.5 ? 0.6 : 1.2));
+      playBGMChime(chimeFreq, nextBgmTime + (Math.random() < 0.5 ? beat : beat * 2));
     }
-    nextBgmTime += 2.4;
+    if (g && g.state === "play") playBeatPattern(chord, nextBgmTime, beat);
+    nextBgmTime += bar;
     bgmStep++;
   }
 }
@@ -1341,7 +1591,7 @@ cv.addEventListener("touchmove", e => {
   const dy = t.clientY - touchStartY;
   const distSq = dx * dx + dy * dy;
 
-  if (distSq > 12 * 12) {
+  if (distSq > swipeDist * swipeDist) {
     touchSwiped = true;
     clearTimeout(holdBoostTimer);
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -1366,7 +1616,7 @@ cv.addEventListener("touchend", e => {
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartX;
     const dy = t.clientY - touchStartY;
-    if (Math.hypot(dx, dy) < 12) {
+    if (Math.hypot(dx, dy) < swipeDist) {
       if (g.state !== "play") {
         input.fire("jump");
         pulseButton(spaceBtn);
@@ -1558,7 +1808,7 @@ reset();
 function spawnRow() {
   const lane = Math.floor(Math.random() * LANES);
   g.obs.push({ lane, y:-40, low: Math.random() < 0.5 });
-  if (Math.random() < 0.6) {
+  if (Math.random() < tx.coinRate) {
     const other = (lane + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
     g.coins.push({ lane:other, y:-40 });
   }
@@ -1594,7 +1844,8 @@ function update(dt) {
 
   g.t += dt;
   const boost = input.boost;
-  const speed = (280 + g.t * 8) * (boost ? 1.35 : 1);
+  const bm = boost ? tx.boostMul : 1;
+  const speed = (280 + g.t * 8) * bm * tx.speed * mood.speedMul;
   g.scroll = (g.scroll + speed * dt) % 40;
   g.score += dt * 10 * (boost ? 2 : 1);
 
@@ -1602,7 +1853,7 @@ function update(dt) {
     spawnTrailParticle(g.x, PY);
   }
 
-  g.spawn -= dt * (boost ? 1.35 : 1);
+  g.spawn -= dt * bm * tx.density * mood.spawnMul;
   if (g.spawn <= 0) { spawnRow(); g.spawn = Math.max(0.45, 1.0 - g.t * 0.01); }
 
   const airborne = g.jumpT > 0.1;
@@ -1611,6 +1862,7 @@ function update(dt) {
     if (checkBallObstacleHit(g.x, PY, BALL_RADIUS, o) && !(o.low && airborne)) {
       g.state = "over";
       g.overAt = performance.now();
+      mood.perf = g.t < 15 ? Math.min(1, mood.perf + 0.4) : Math.max(0, mood.perf - 0.25);
       best = Math.max(best, Math.floor(g.score));
       input.clear();
       playHitSound();
@@ -1640,7 +1892,7 @@ function draw() {
   // Screen shake: strong start, frequency/amplitude decay, stops completely
   if (shake > 0) {
     const progress = shake / SHAKE_DURATION;
-    const amp = Math.pow(progress, 1.6) * 14;
+    const amp = Math.pow(progress, 1.6) * 14 * tx.shakeAmt;
     const currentFreq = 8 + 28 * progress;
     const angle = shakeTime * currentFreq * Math.PI * 2;
     const sx = Math.sin(angle) * amp + (Math.random() - 0.5) * amp * 0.35;
@@ -1655,6 +1907,18 @@ function draw() {
   grad.addColorStop(1, "#120a17");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
+
+  // Mood tint: cool blue when the player is strained, warm gold when happy
+  if (tx.adapt) {
+    if (mood.stress > 0.02) {
+      ctx.fillStyle = "rgba(56, 189, 248, " + (0.2 * mood.stress * tx.adaptStrength).toFixed(3) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (mood.joy > 0.02) {
+      ctx.fillStyle = "rgba(245, 158, 11, " + (0.2 * mood.joy * tx.adaptStrength).toFixed(3) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
 
   // Retro Neon Lane dividers
   ctx.strokeStyle = "rgba(225, 29, 72, 0.28)";
@@ -1792,6 +2056,13 @@ function draw() {
   ctx.fillStyle = "#f43f5e";
   ctx.fillText("HIGH " + best, W - 20, 36);
 
+  if (tx.adapt && g.state === "play" && (mood.label === "STRAINED" || mood.label === "HAPPY")) {
+    ctx.textAlign = "left";
+    ctx.font = "8px 'Press Start 2P'";
+    ctx.fillStyle = mood.label === "STRAINED" ? "#38bdf8" : "#fbbf24";
+    ctx.fillText(mood.label === "STRAINED" ? "MOOD: STRAINED - EASING" : "MOOD: HAPPY - SPEEDING UP", 20, isBoost ? 76 : 58);
+  }
+
   // Ready / Game Over Overlay Screens
   if (g.state !== "play") {
     ctx.fillStyle = "rgba(7, 3, 10, 0.88)";
@@ -1820,13 +2091,234 @@ function draw() {
   ctx.restore();
 }
 
+/* ---------- EMOTION-ADAPTIVE ENGINE ---------- */
+function feedMood(s, smile) {
+  const avg = (a, b) => ((s[a] || 0) + (s[b] || 0)) / 2;
+  const raw = avg("browDownLeft", "browDownRight") * 0.45
+            + avg("mouthPressLeft", "mouthPressRight") * 0.2
+            + avg("mouthFrownLeft", "mouthFrownRight") * 0.15
+            + avg("eyeSquintLeft", "eyeSquintRight") * 0.1
+            + avg("noseSneerLeft", "noseSneerRight") * 0.1;
+  mood.tStress = Math.max(0, Math.min(1, raw * (1.5 + 0.36 * tx.moodSens)));
+  mood.tJoy = Math.max(0, Math.min(1, smile * (0.8 + 0.2 * tx.moodSens)));
+  mood.seen = performance.now();
+}
+
+function updateMood(dt) {
+  const now = performance.now();
+  let tS = 0, tJ = 0;
+  if (face.on) {
+    if (now - mood.seen < 700) { tS = mood.tStress; tJ = mood.tJoy; }
+  } else {
+    tS = mood.perf; // no camera: judge strain from how the run is going
+  }
+  const a = 1 - Math.exp(-dt / 1.6);
+  mood.stress += (tS - mood.stress) * a;
+  mood.joy += (tJ - mood.joy) * a;
+  mood.perf = Math.max(0, mood.perf - dt * 0.015);
+  const st = tx.adapt ? tx.adaptStrength : 0;
+  mood.speedMul = 1 - 0.32 * st * mood.stress + 0.14 * st * mood.joy;
+  mood.spawnMul = 1 - 0.40 * st * mood.stress + 0.18 * st * mood.joy;
+  mood.label = !tx.adapt ? "OFF" : mood.stress > 0.45 ? "STRAINED" : mood.joy > 0.45 ? "HAPPY" : "STEADY";
+}
+
+/* ---------- ADAPTIVE MUSIC STATE + OPTIONAL MUSIC FILES ---------- */
+function updateMusicState(dt) {
+  const st = tx.adapt ? tx.adaptStrength : 0;
+  let target = 0.15;
+  if (g && g.state === "play") target = 0.3 + Math.min(0.45, g.t / 90) + (input.boost ? 0.12 : 0);
+  target += (mood.joy * 0.2 - mood.stress * 0.35) * st;
+  target = Math.max(0, Math.min(1, target));
+  music.intensity += (target - music.intensity) * Math.min(1, dt * 0.8);
+}
+
+const musicEls = {};
+for (const k of ["calm", "normal", "intense"]) {
+  if (MUSIC_FILES[k]) {
+    const a = new Audio(MUSIC_FILES[k]);
+    a.loop = true; a.preload = "auto"; a.volume = 0;
+    musicEls[k] = a;
+  }
+}
+let musicStarted = false;
+function musicFilesActive() { return Object.keys(musicEls).length > 0; }
+function startMusicFiles() {
+  if (musicStarted || !musicFilesActive()) return;
+  musicStarted = true;
+  for (const k in musicEls) musicEls[k].play().catch(() => { musicStarted = false; });
+}
+function musicFileTick(dt) {
+  if (!musicFilesActive()) return;
+  const it = music.intensity;
+  let want = it > 0.7 ? "intense" : it < 0.3 ? "calm" : "normal";
+  if (!musicEls[want]) want = ["normal", "calm", "intense"].find(k => musicEls[k]);
+  for (const k in musicEls) {
+    const a = musicEls[k];
+    const target = (k === want && !soundMuted) ? tx.musicVol : 0;
+    a.volume = Math.max(0, Math.min(1, a.volume + (target - a.volume) * Math.min(1, dt * 1.5)));
+  }
+}
+
+/* ---------- TRANSFORM EXPERIENCE DASHBOARD ---------- */
+function applySettings() {
+  JUMP_TIME = tx.jump;
+  if (g) g.jumpT = Math.min(g.jumpT, JUMP_TIME);
+  CONFIG.tiltTrigger = 0.55 - 0.04 * tx.tiltSens;
+  CONFIG.tiltReset = CONFIG.tiltTrigger * 0.46;
+  CONFIG.smile = 0.8 - 0.06 * tx.smileSens;
+  jumpFactor = 0.6 + 0.08 * tx.jumpSens;
+  swipeDist = Math.max(5, 24 - 2.4 * tx.swipeSens);
+  cv.style.filter = tx.hue ? "hue-rotate(" + tx.hue + "deg)" : "";
+  if (bgmGain && audioCtx) {
+    bgmGain.gain.setValueAtTime(tx.musicVol, audioCtx.currentTime);
+    sfxGain.gain.setValueAtTime(tx.sfxVol, audioCtx.currentTime);
+  }
+  try { localStorage.setItem("aachiTx", JSON.stringify(tx)); } catch (e) {}
+}
+
+const fx = (d, suf) => v => Number(v).toFixed(d) + suf;
+const fScale = v => v + "/10";
+const fPct = v => Math.round(v * 100) + "%";
+const TX_FMT = {
+  speed: fx(2, "x"), density: fx(2, "x"), jump: fx(2, "s"), boostMul: fx(2, "x"), coinRate: fPct,
+  tiltSens: fScale, jumpSens: fScale, smileSens: fScale, swipeSens: fScale,
+  adaptStrength: fPct, moodSens: fScale, musicVol: fPct, sfxVol: fPct, shakeAmt: fPct,
+  hue: v => v + "°"
+};
+const TX_SCHEMA = [
+  { title: "GAMEPLAY", rows: [
+    ["speed", "Game speed", 0.5, 1.8, 0.05],
+    ["density", "Obstacle frequency", 0.5, 2, 0.05],
+    ["jump", "Jump hang time", 0.4, 1.1, 0.05],
+    ["boostMul", "Boost power", 1.1, 2, 0.05],
+    ["coinRate", "Coin chance", 0.1, 1, 0.05] ] },
+  { title: "CONTROLS", rows: [
+    ["tiltSens", "Head tilt: change lane", 1, 10, 1],
+    ["jumpSens", "Look up: jump", 1, 10, 1],
+    ["smileSens", "Smile: boost", 1, 10, 1],
+    ["swipeSens", "Touch swipe", 1, 10, 1] ] },
+  { title: "SOUND AND LOOK", rows: [
+    ["musicVol", "Music volume", 0, 1, 0.05],
+    ["sfxVol", "Effects volume", 0, 1, 0.05],
+    ["shakeAmt", "Screen shake", 0, 2, 0.1],
+    ["hue", "Colour shift", 0, 360, 10] ] }
+];
+const TX_PRESETS = {
+  relaxed: { speed: 0.75, density: 0.7, jump: 0.9, boostMul: 1.25, coinRate: 0.8, shakeAmt: 0.5, adaptStrength: 0.8 },
+  classic: {},
+  intense: { speed: 1.35, density: 1.5, jump: 0.55, boostMul: 1.6, coinRate: 0.45, shakeAmt: 1.4, adaptStrength: 0.3 }
+};
+const TX_PRESET_KEYS = ["speed", "density", "jump", "boostMul", "coinRate", "shakeAmt", "adaptStrength"];
+
+const txOverlay = document.getElementById("txOverlay"), txBody = document.getElementById("txBody"),
+      txCloseBtn = document.getElementById("txClose"), txOpenBtn = document.getElementById("txOpenBtn");
+
+function txRow(k, label, min, max, step) {
+  return '<div class="tx-row"><label for="tx_' + k + '"><span>' + label + '</span><output id="out_' + k + '"></output></label>'
+       + '<input class="tx-range" id="tx_' + k + '" data-key="' + k + '" type="range" min="' + min + '" max="' + max + '" step="' + step + '"></div>';
+}
+
+function buildTxUI() {
+  let html = "";
+  for (const card of TX_SCHEMA.slice(0, 2)) {
+    html += '<section class="tx-card"><h3>' + card.title + '</h3>' + card.rows.map(r => txRow(...r)).join("") + '</section>';
+  }
+  html += '<section class="tx-card mood"><h3>EMOTION ADAPTIVE</h3>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="adaptLbl">Adapt the game to my mood</span>'
+        + '<button class="tx-switch" id="txAdaptSw" role="switch" aria-labelledby="adaptLbl" aria-checked="true"></button></div></div>'
+        + txRow("adaptStrength", "Adaptation strength", 0, 1, 0.05)
+        + txRow("moodSens", "Mood sensitivity", 1, 10, 1)
+        + '<div class="tx-meter"><span>Strain</span><div class="tx-bar"><i class="strain" id="mStress"></i></div></div>'
+        + '<div class="tx-meter"><span>Joy</span><div class="tx-bar"><i class="joy" id="mJoy"></i></div></div>'
+        + '<p class="tx-note" id="moodLine"></p></section>';
+  const last = TX_SCHEMA[2];
+  html += '<section class="tx-card"><h3>' + last.title + '</h3>' + last.rows.map(r => txRow(...r)).join("") + '</section>';
+  txBody.innerHTML = html;
+}
+
+function refreshTxUI() {
+  txBody.querySelectorAll(".tx-range").forEach(el => {
+    const k = el.dataset.key;
+    el.value = tx[k];
+    document.getElementById("out_" + k).textContent = TX_FMT[k](tx[k]);
+  });
+  document.getElementById("txAdaptSw").setAttribute("aria-checked", String(tx.adapt));
+}
+
+let lastMoodLine = "";
+function refreshMoodMeters() {
+  document.getElementById("mStress").style.width = Math.round(mood.stress * 100) + "%";
+  document.getElementById("mJoy").style.width = Math.round(mood.joy * 100) + "%";
+  let line;
+  if (!tx.adapt) line = "Adaptation is off. The game keeps the speed you set.";
+  else if (face.on) line = "Reading your expression now: " + mood.label.toLowerCase() + ". Furrowed brows ease the game down, smiles speed it up.";
+  else line = "Camera is off, so the game judges strain from how you play: quick crashes ease it down. Turn on the 👁️ camera to read your expression instead.";
+  if (line !== lastMoodLine) { document.getElementById("moodLine").textContent = line; lastMoodLine = line; }
+}
+
+function openTx() {
+  txOpen = true;
+  input.clear();
+  refreshTxUI();
+  refreshMoodMeters();
+  txOverlay.classList.add("open");
+  txOverlay.setAttribute("aria-hidden", "false");
+  txOverlay.scrollTop = 0;
+  txCloseBtn.focus();
+}
+function closeTx() {
+  txOpen = false;
+  input.clear();
+  txOverlay.classList.remove("open");
+  txOverlay.setAttribute("aria-hidden", "true");
+  txOpenBtn.focus();
+}
+
+buildTxUI();
+txBody.addEventListener("input", e => {
+  const k = e.target.dataset && e.target.dataset.key;
+  if (!k) return;
+  tx[k] = Number(e.target.value);
+  document.getElementById("out_" + k).textContent = TX_FMT[k](tx[k]);
+  applySettings();
+});
+txBody.addEventListener("click", e => {
+  if (e.target.id === "txAdaptSw") {
+    tx.adapt = !tx.adapt;
+    e.target.setAttribute("aria-checked", String(tx.adapt));
+    applySettings();
+    refreshMoodMeters();
+  }
+});
+document.getElementById("txPresets").addEventListener("click", e => {
+  const name = e.target.dataset && e.target.dataset.preset;
+  if (!name) return;
+  for (const k of TX_PRESET_KEYS) tx[k] = TX_PRESETS[name][k] !== undefined ? TX_PRESETS[name][k] : TX_DEFAULTS[k];
+  applySettings();
+  refreshTxUI();
+});
+document.getElementById("txReset").addEventListener("click", () => {
+  Object.assign(tx, TX_DEFAULTS);
+  applySettings();
+  refreshTxUI();
+  refreshMoodMeters();
+});
+txOpenBtn.addEventListener("click", () => { initAudio(); openTx(); });
+txCloseBtn.addEventListener("click", closeTx);
+document.getElementById("txResume").addEventListener("click", closeTx);
+applySettings();
+refreshTxUI();
+
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  updateMood(dt);
+  updateMusicState(dt);
   scheduleBGM();
+  musicFileTick(dt);
   pollFace();
-  update(dt);
+  if (txOpen) { input.clear(); refreshMoodMeters(); } else update(dt);
   draw();
   requestAnimationFrame(frame);
 }
