@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=0.82, minimum-scale=0.5, maximum-scale=3, viewport-fit=cover">
+<meta name="theme-color" content="#07030a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gameslot">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>ARCADE MACHINE — AACHI'S GAMESLOT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -662,7 +668,8 @@
     margin-bottom: 14px;
   }
   .deck-action-row .btn-start {
-    flex: 1 1 200px;
+    flex: 1 1 300px;
+    font-size: 10px;
     max-width: none;
     margin: 0;
   }
@@ -679,6 +686,16 @@
     letter-spacing: 1px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+  .btn-coop.on {
+    background: radial-gradient(circle at 50% 30%, #67e8f9 0%, #06b6d4 60%, #155e75 100%);
+    border-color: #0e7490;
+    box-shadow: 0 6px 0 #083344, 0 8px 15px rgba(0, 0, 0, 0.6), 0 0 18px rgba(6, 182, 212, 0.5);
+  }
+  .btn-install {
+    background: radial-gradient(circle at 50% 30%, #6ee7b7 0%, #10b981 60%, #065f46 100%);
+    border-color: #047857;
+    box-shadow: 0 6px 0 #022c22, 0 8px 15px rgba(0, 0, 0, 0.6), 0 0 18px rgba(16, 185, 129, 0.4);
   }
   .btn-transform:active {
     box-shadow: 0 2px 0 #3b0764, 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.7) !important;
@@ -839,8 +856,10 @@
       <div class="deck-title">★ AACHI'S GAMESLOT ★</div>
 
       <div class="deck-action-row">
-        <button id="startBtn" class="arcade-btn btn-start">▶ START THE GAME</button>
+        <button id="startBtn" class="arcade-btn btn-start" aria-label="Start or pause the experience">⏯ START/PAUSE THE EXPERIENCE</button>
         <button id="txOpenBtn" class="arcade-btn btn-transform" aria-haspopup="dialog">⚙ TRANSFORM EXPERIENCE</button>
+        <button id="coopBtn" class="arcade-btn btn-transform btn-coop" aria-pressed="false">👥 CO-OP BETA: OFF</button>
+        <button id="installBtn" class="arcade-btn btn-transform btn-install" style="display:none">📲 INSTALL APP</button>
       </div>
 
       <div class="deck-controls-row">
@@ -993,9 +1012,11 @@ try {
   const saved = JSON.parse(localStorage.getItem("aachiTx") || "{}");
   for (const k in TX_DEFAULTS) if (typeof saved[k] === typeof TX_DEFAULTS[k]) tx[k] = saved[k];
 } catch (e) {}
-let txOpen = false, swipeDist = 12, jumpFactor = 1;
+let txOpen = false, userPaused = false, swipeDist = 12, jumpFactor = 1;
 const mood = { stress: 0, joy: 0, tStress: 0, tJoy: 0, seen: 0, perf: 0, speedMul: 1, spawnMul: 1, label: "STEADY" };
 const music = { intensity: 0.15 };
+// Co-op beta: Player 1 (left) steers, Player 2 (right) uses expressions to help
+const coop = { on: false, present: false, smiling: false, surprised: false, rain: 0, shieldLeft: 0, shieldCd: 0 };
 
 /* ---------- INPUT LAYER ---------- */
 const input = {
@@ -1079,7 +1100,8 @@ startBtn.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   initAudio();
   pulseButton(startBtn);
-  if (g.state !== "play") reset("play");
+  if (g.state !== "play") { userPaused = false; reset("play"); }
+  else { userPaused = !userPaused; input.clear(); }
 });
 
 // Power button hold for boost
@@ -1116,6 +1138,7 @@ micBtn.addEventListener("click", () => {
 addEventListener("keydown", e => {
   initAudio();
   if (txOpen) { if (e.code === "Escape") closeTx(); return; }
+  if (e.code === "KeyP" && g.state === "play") { userPaused = !userPaused; input.clear(); return; }
   if (e.repeat) return;
   if (e.code === "ArrowLeft"  || e.code === "KeyA") {
     input.fire("left");
@@ -1157,7 +1180,7 @@ async function loadModel() {
   const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
   face.landmarker = await FaceLandmarker.createFromOptions(files, {
     baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
-    runningMode: "VIDEO", numFaces: 1, outputFaceBlendshapes: true
+    runningMode: "VIDEO", numFaces: coop.on ? 2 : 1, outputFaceBlendshapes: true
   });
 }
 
@@ -1166,12 +1189,16 @@ function pollFace() {
   face.lastTime = video.currentTime;
   const res = face.landmarker.detectForVideo(video, performance.now());
   if (!res.faceLandmarks.length) {
+    coop.smiling = false; coop.present = false; coop.surprised = false;
     statusEl.textContent = "Searching for face. Keep camera illuminated!";
     if (hudAction) { hudAction.style.display = "block"; hudAction.textContent = "SEARCHING"; }
     return;
   }
 
-  const lm = res.faceLandmarks[0];
+  const order = faceOrder(res);
+  const pi = order[0];
+  const lm = res.faceLandmarks[pi];
+  if (coop.on) runWildCard(res, order.length > 1 ? order[1] : -1);
 
   // Head tilt left / right -> lane change (updates physical joystick too!)
   const a = lm[33], b = lm[263];
@@ -1227,7 +1254,7 @@ function pollFace() {
 
   // Blendshapes (Smile boost & Surprised jump fallback)
   const s = {};
-  for (const c of res.faceBlendshapes[0].categories) s[c.categoryName] = c.score;
+  for (const c of res.faceBlendshapes[pi].categories) s[c.categoryName] = c.score;
   const smile = (s.mouthSmileLeft + s.mouthSmileRight) / 2;
   feedMood(s, smile);
   const surprisedNow = s.jawOpen > CONFIG.surprisedJaw && s.browInnerUp > CONFIG.surprisedBrow;
@@ -1256,7 +1283,7 @@ function pollFace() {
       hudAction.textContent = "🔥 SMILE (BOOST)";
       statusEl.textContent = "Smile detected: POWER BOOST!";
     } else {
-      hudAction.textContent = "AI TRACKING OK";
+      hudAction.textContent = coop.on ? (coop.present ? "CO-OP: 2 PLAYERS" : "CO-OP: WAITING FOR P2") : "AI TRACKING OK";
       statusEl.textContent = "Camera tracking active: tilt head to move, tilt up to jump!";
     }
   }
@@ -1452,7 +1479,7 @@ function scheduleBGM() {
       const chimeFreq = MELODY[Math.floor(Math.random() * MELODY.length)];
       playBGMChime(chimeFreq, nextBgmTime + (Math.random() < 0.5 ? beat : beat * 2));
     }
-    if (g && g.state === "play") playBeatPattern(chord, nextBgmTime, beat);
+    if (g && g.state === "play" && !userPaused) playBeatPattern(chord, nextBgmTime, beat);
     nextBgmTime += bar;
     bgmStep++;
   }
@@ -1802,6 +1829,7 @@ function reset(state = "ready") {
   shake = 0;
   shakeTime = 0;
   input.clear();
+  coop.shieldLeft = 0; coop.shieldCd = 0; coop.rain = 0;
 }
 reset();
 
@@ -1843,6 +1871,19 @@ function update(dt) {
   g.jumpT = Math.max(0, g.jumpT - dt);
 
   g.t += dt;
+  if (coop.on) {
+    coop.shieldLeft = Math.max(0, coop.shieldLeft - dt);
+    coop.shieldCd = Math.max(0, coop.shieldCd - dt);
+    if (coop.smiling) {
+      coop.rain -= dt;
+      if (coop.rain <= 0) {
+        coop.rain = 0.35;
+        const free = [];
+        for (let l = 0; l < LANES; l++) if (!g.obs.some(o => o.lane === l && o.y < 90)) free.push(l);
+        if (free.length) g.coins.push({ lane: free[Math.floor(Math.random() * free.length)], y: -40 });
+      }
+    }
+  }
   const boost = input.boost;
   const bm = boost ? tx.boostMul : 1;
   const speed = (280 + g.t * 8) * bm * tx.speed * mood.speedMul;
@@ -1859,6 +1900,13 @@ function update(dt) {
   const airborne = g.jumpT > 0.1;
   for (const o of g.obs) {
     o.y += speed * dt;
+    if (coop.on && coop.shieldLeft > 0 && checkBallObstacleHit(g.x, PY, BALL_RADIUS, o) && !(o.low && airborne)) {
+      coop.shieldLeft = 0;
+      o.y = H + 100;
+      spawnHitParticles(g.x, PY);
+      playShieldSound();
+      continue;
+    }
     if (checkBallObstacleHit(g.x, PY, BALL_RADIUS, o) && !(o.low && airborne)) {
       g.state = "over";
       g.overAt = performance.now();
@@ -2040,6 +2088,19 @@ function draw() {
   ctx.fill();
   ctx.restore();
 
+  // Co-op shield ring
+  if (coop.on && coop.shieldLeft > 0 && (coop.shieldLeft > 1.5 || Math.floor(coop.shieldLeft * 6) % 2 === 0)) {
+    ctx.save();
+    ctx.strokeStyle = "#22d3ee";
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.x, PY - lift, 31, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Retro Blocky In-Game HUD
   ctx.font = "12px 'Press Start 2P'";
   ctx.fillStyle = "#ffffff";
@@ -2061,6 +2122,19 @@ function draw() {
     ctx.font = "8px 'Press Start 2P'";
     ctx.fillStyle = mood.label === "STRAINED" ? "#38bdf8" : "#fbbf24";
     ctx.fillText(mood.label === "STRAINED" ? "MOOD: STRAINED - EASING" : "MOOD: HAPPY - SPEEDING UP", 20, isBoost ? 76 : 58);
+  }
+
+  if (coop.on) {
+    ctx.textAlign = "left";
+    ctx.font = "8px 'Press Start 2P'";
+    let tag, col = "#c084fc";
+    if (!face.on) tag = "CO-OP BETA: TURN ON CAMERA";
+    else if (!coop.present) tag = "CO-OP BETA: WAITING FOR P2";
+    else if (coop.shieldLeft > 0) { tag = "P2 SHIELD " + coop.shieldLeft.toFixed(1) + "S"; col = "#22d3ee"; }
+    else if (coop.smiling) { tag = "P2 COIN RAIN!"; col = "#fbbf24"; }
+    else tag = "CO-OP BETA: P2 READY";
+    ctx.fillStyle = col;
+    ctx.fillText(tag, 20, H - 14);
   }
 
   // Ready / Game Over Overlay Screens
@@ -2086,6 +2160,21 @@ function draw() {
     ctx.fillStyle = "#94a3b8";
     const promptText = g.state === "ready" ? "PRESS SPACE OR JUMP" : "PRESS SPACE TO RETRY";
     ctx.fillText(promptText, W / 2, H / 2 + (g.state === "over" ? 42 : 14));
+  }
+
+  if (userPaused && g.state === "play") {
+    ctx.fillStyle = "rgba(7, 3, 10, 0.78)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.font = "24px 'Press Start 2P'";
+    ctx.fillStyle = "#a855f7";
+    ctx.shadowColor = "#a855f7";
+    ctx.shadowBlur = 14;
+    ctx.fillText("PAUSED", W / 2, H / 2 - 10);
+    ctx.shadowBlur = 0;
+    ctx.font = "9px 'Press Start 2P'";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("PRESS START/PAUSE OR P", W / 2, H / 2 + 24);
   }
 
   ctx.restore();
@@ -2231,6 +2320,10 @@ function buildTxUI() {
         + '<div class="tx-meter"><span>Strain</span><div class="tx-bar"><i class="strain" id="mStress"></i></div></div>'
         + '<div class="tx-meter"><span>Joy</span><div class="tx-bar"><i class="joy" id="mJoy"></i></div></div>'
         + '<p class="tx-note" id="moodLine"></p></section>';
+  html += '<section class="tx-card mood"><h3>CO-OP MODE (BETA)</h3>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="coopLbl">Two players, one camera</span>'
+        + '<button class="tx-switch" id="txCoopSw" role="switch" aria-labelledby="coopLbl" aria-checked="false"></button></div></div>'
+        + '<p class="tx-note">Sit side by side in front of the camera. Player 1 sits on the left of the preview: head tilt steers and looking up jumps. Player 2 sits on the right: a smile rains coins, and a wide open mouth gives a 5 second shield. This turns the camera on, and it works best when both faces are well lit.</p></section>';
   const last = TX_SCHEMA[2];
   html += '<section class="tx-card"><h3>' + last.title + '</h3>' + last.rows.map(r => txRow(...r)).join("") + '</section>';
   txBody.innerHTML = html;
@@ -2243,6 +2336,7 @@ function refreshTxUI() {
     document.getElementById("out_" + k).textContent = TX_FMT[k](tx[k]);
   });
   document.getElementById("txAdaptSw").setAttribute("aria-checked", String(tx.adapt));
+  syncCoopUI();
 }
 
 let lastMoodLine = "";
@@ -2283,6 +2377,7 @@ txBody.addEventListener("input", e => {
   applySettings();
 });
 txBody.addEventListener("click", e => {
+  if (e.target.id === "txCoopSw") { setCoop(!coop.on); return; }
   if (e.target.id === "txAdaptSw") {
     tx.adapt = !tx.adapt;
     e.target.setAttribute("aria-checked", String(tx.adapt));
@@ -2309,6 +2404,97 @@ document.getElementById("txResume").addEventListener("click", closeTx);
 applySettings();
 refreshTxUI();
 
+/* ---------- CO-OP BETA ---------- */
+const coopBtn = document.getElementById("coopBtn");
+
+// Order faces: player 1 first. The preview is mirrored, so the larger raw x is the left side of the screen.
+function faceOrder(res) {
+  const L = res.faceLandmarks;
+  const h = i => Math.abs(L[i][152].y - L[i][10].y);
+  const idx = L.map((_, i) => i).sort((a, b) => h(b) - h(a));
+  if (coop.on && idx.length > 1) {
+    const two = idx.slice(0, 2);
+    two.sort((a, b) => L[b][1].x - L[a][1].x);
+    return two;
+  }
+  return idx;
+}
+
+function runWildCard(res, wi) {
+  coop.present = wi >= 0;
+  if (!coop.present) { coop.smiling = false; coop.surprised = false; return; }
+  const sc = {};
+  for (const c of res.faceBlendshapes[wi].categories) sc[c.categoryName] = c.score;
+  coop.smiling = ((sc.mouthSmileLeft || 0) + (sc.mouthSmileRight || 0)) / 2 > CONFIG.smile;
+  const sur = (sc.jawOpen || 0) > CONFIG.surprisedJaw && (sc.browInnerUp || 0) > CONFIG.surprisedBrow;
+  if (sur && !coop.surprised && coop.shieldCd <= 0 && g.state === "play") {
+    coop.shieldLeft = 5;
+    coop.shieldCd = 9;
+    playShieldSound();
+  }
+  coop.surprised = sur;
+}
+
+function playShieldSound() {
+  if (!audioCtx || soundMuted || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime;
+  [520, 780].forEach((freq, i) => {
+    const o = audioCtx.createOscillator(), gn = audioCtx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(freq, now + i * 0.08);
+    gn.gain.setValueAtTime(0.2, now + i * 0.08);
+    gn.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+    o.connect(gn); gn.connect(sfxGain);
+    o.start(now + i * 0.08); o.stop(now + i * 0.08 + 0.22);
+  });
+}
+
+function syncCoopUI() {
+  const cb = document.getElementById("coopBtn");
+  cb.textContent = coop.on ? "👥 CO-OP BETA: ON" : "👥 CO-OP BETA: OFF";
+  cb.classList.toggle("on", coop.on);
+  cb.setAttribute("aria-pressed", String(coop.on));
+  const sw = document.getElementById("txCoopSw");
+  if (sw) sw.setAttribute("aria-checked", String(coop.on));
+}
+
+async function setCoop(on) {
+  coop.on = on;
+  coop.smiling = false; coop.present = false; coop.surprised = false;
+  coop.shieldLeft = 0; coop.shieldCd = 0; coop.rain = 0;
+  syncCoopUI();
+  if (on) {
+    if (!face.on) await setFace(true);
+    else if (face.landmarker && face.landmarker.setOptions) {
+      try { await face.landmarker.setOptions({ numFaces: 2 }); } catch (e) {}
+    }
+    if (!face.on) { coop.on = false; syncCoopUI(); } // camera was refused
+  } else if (face.landmarker && face.landmarker.setOptions) {
+    try { await face.landmarker.setOptions({ numFaces: 1 }); } catch (e) {}
+  }
+}
+coopBtn.addEventListener("click", () => { initAudio(); setCoop(!coop.on); });
+
+/* ---------- INSTALLABLE APP (PWA) ---------- */
+const installBtn = document.getElementById("installBtn");
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  installBtn.style.display = "flex";
+});
+installBtn.addEventListener("click", async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  try { await deferredInstall.userChoice; } catch (e) {}
+  deferredInstall = null;
+  installBtn.style.display = "none";
+});
+window.addEventListener("appinstalled", () => { installBtn.style.display = "none"; });
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
@@ -2318,7 +2504,7 @@ function frame(now) {
   scheduleBGM();
   musicFileTick(dt);
   pollFace();
-  if (txOpen) { input.clear(); refreshMoodMeters(); } else update(dt);
+  if (txOpen) { input.clear(); refreshMoodMeters(); } else if (userPaused) input.clear(); else update(dt);
   draw();
   requestAnimationFrame(frame);
 }
