@@ -687,6 +687,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
+  #micBtn.listening { outline: 2px solid #4ade80; outline-offset: 3px; box-shadow: 0 0 14px rgba(74, 222, 128, 0.7); }
   .btn-coop.on {
     background: radial-gradient(circle at 50% 30%, #67e8f9 0%, #06b6d4 60%, #155e75 100%);
     border-color: #0e7490;
@@ -1005,7 +1006,8 @@ const TX_DEFAULTS = {
   speed: 1, density: 1, jump: 0.7, boostMul: 1.35, coinRate: 0.6,
   tiltSens: 5, jumpSens: 5, smileSens: 5, swipeSens: 5,
   adapt: true, adaptStrength: 0.6, moodSens: 5,
-  musicVol: 0.5, sfxVol: 0.7, shakeAmt: 1, hue: 0
+  musicVol: 0.5, sfxVol: 0.7, shakeAmt: 1, hue: 0,
+  voiceFast: true
 };
 const tx = Object.assign({}, TX_DEFAULTS);
 try {
@@ -1126,13 +1128,135 @@ soundBtn.addEventListener("click", () => {
   toggleSound();
 });
 
-// Mic button toggles voice status
-let micActive = false;
-micBtn.addEventListener("click", () => {
-  micActive = !micActive;
-  micBtn.classList.toggle("off", !micActive);
-  statusEl.textContent = micActive ? "Voice Control: Listening for 'Jump', 'Left', 'Right'..." : "Voice Control muted.";
-});
+/* ---------- VOICE CONTROL (say "left", "right", "jump") ---------- */
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const MOBILE_UA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+const voice = { wanted: false, rec: null, seen: {}, last: "", lastAt: -9999, quick: 0, t0: 0, msg: "" };
+
+const VOICE_WORDS = [
+  [/^(left|lefts|lift)$/, "left"],
+  [/^(right|rights|write|rite)$/, "right"],
+  [/^(jump|jumps|jumped|jumping|hop)$/, "jump"]
+];
+function parseCommands(text) {
+  const out = [];
+  for (const w of String(text).toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/)) {
+    for (const [re, cmd] of VOICE_WORDS) if (re.test(w)) { out.push(cmd); break; }
+  }
+  return out;
+}
+
+function voiceLang() {
+  const l = (navigator.language || "en-US");
+  return l.toLowerCase().startsWith("en") ? l : "en-US";
+}
+
+function fireVoice(cmd) {
+  input.fire(cmd);
+  voice.last = cmd;
+  voice.lastAt = performance.now();
+  if (cmd === "jump") { setJoystickVisual("up"); pulseButton(spaceBtn); }
+  else setJoystickVisual(cmd);
+  setTimeout(() => setJoystickVisual(null), 220);
+}
+
+function handleVoiceResult(e) {
+  for (let i = e.resultIndex; i < e.results.length; i++) {
+    const res = e.results[i];
+    if (!tx.voiceFast && !res.isFinal) continue;
+    let toks = parseCommands(res[0].transcript);
+    if (!toks.length && res.isFinal) {
+      for (let a = 1; a < res.length && !toks.length; a++) toks = parseCommands(res[a].transcript);
+    }
+    const done = voice.seen[i] || 0;
+    for (let k = done; k < toks.length; k++) fireVoice(toks[k]);
+    if (toks.length > done) voice.seen[i] = toks.length;
+  }
+}
+
+function startVoiceRec() {
+  if (!voice.wanted || voice.rec || !SpeechRec) return;
+  const rec = new SpeechRec();
+  rec.lang = voiceLang();
+  rec.continuous = !MOBILE_UA;
+  rec.interimResults = true;
+  rec.maxAlternatives = 3;
+  voice.seen = {};
+  rec.onstart = () => {
+    voice.t0 = performance.now();
+    voice.msg = "Listening: say left, right or jump.";
+    statusEl.textContent = "Voice Control: say 'Left', 'Right' or 'Jump'";
+    syncVoiceUI();
+  };
+  rec.onresult = handleVoiceResult;
+  rec.onerror = ev => {
+    if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+      voice.wanted = false;
+      voice.msg = "Microphone blocked. Allow mic access for this site, then tap the mic again.";
+    } else if (ev.error === "audio-capture") {
+      voice.wanted = false;
+      voice.msg = "No microphone found.";
+    } else if (ev.error === "network") {
+      voice.msg = "Voice recognition needs an internet connection: the browser sends your speech to its speech service.";
+    }
+    statusEl.textContent = voice.msg || statusEl.textContent;
+    syncVoiceUI();
+  };
+  rec.onend = () => {
+    voice.rec = null;
+    if (!voice.wanted) { syncVoiceUI(); return; }
+    voice.quick = (performance.now() - voice.t0 < 800) ? voice.quick + 1 : 0;
+    if (voice.quick > 6) {
+      voice.wanted = false;
+      voice.msg = "Voice control stopped because the mic kept closing. Check mic permission and your internet, then tap the mic again.";
+      statusEl.textContent = voice.msg;
+      syncVoiceUI();
+      return;
+    }
+    setTimeout(startVoiceRec, 150);
+  };
+  voice.rec = rec;
+  try { rec.start(); } catch (err) { voice.rec = null; }
+}
+
+function setVoice(on) {
+  if (!SpeechRec) {
+    voice.wanted = false;
+    voice.msg = "Voice control needs Chrome, Edge or Safari. This browser doesn't support speech recognition.";
+    statusEl.textContent = voice.msg;
+    syncVoiceUI();
+    return;
+  }
+  voice.wanted = on;
+  if (on) {
+    voice.quick = 0;
+    voice.msg = "Starting the microphone...";
+    startVoiceRec();
+  } else {
+    if (voice.rec) { try { voice.rec.onend = null; voice.rec.abort(); } catch (err) {} voice.rec = null; }
+    voice.msg = "Voice control muted.";
+    statusEl.textContent = voice.msg;
+  }
+  syncVoiceUI();
+}
+
+function syncVoiceUI() {
+  micBtn.classList.toggle("off", !voice.wanted);
+  micBtn.classList.toggle("listening", voice.wanted && !!voice.rec);
+  micBtn.setAttribute("aria-pressed", String(voice.wanted));
+  const sw = document.getElementById("txVoiceSw");
+  if (sw) sw.setAttribute("aria-checked", String(voice.wanted));
+  const fs = document.getElementById("txVoiceFastSw");
+  if (fs) fs.setAttribute("aria-checked", String(tx.voiceFast));
+  const line = document.getElementById("voiceLine");
+  if (line) {
+    line.textContent = !SpeechRec
+      ? "This browser doesn't support speech recognition. Use Chrome, Edge or Safari."
+      : (voice.msg || "Say 'left', 'right' or 'jump'. Saying 'jump' also starts a run.");
+  }
+}
+
+micBtn.addEventListener("click", () => { initAudio(); setVoice(!voice.wanted); });
 
 /* ---------- SOURCE 1: KEYBOARD CONTROLS (WIRED TO DECK) ---------- */
 addEventListener("keydown", e => {
@@ -2117,6 +2241,13 @@ function draw() {
   ctx.fillStyle = "#f43f5e";
   ctx.fillText("HIGH " + best, W - 20, 36);
 
+  if (performance.now() - voice.lastAt < 900) {
+    ctx.textAlign = "right";
+    ctx.font = "8px 'Press Start 2P'";
+    ctx.fillStyle = "#4ade80";
+    ctx.fillText("VOICE: " + voice.last.toUpperCase(), W - 20, 56);
+  }
+
   if (tx.adapt && g.state === "play" && (mood.label === "STRAINED" || mood.label === "HAPPY")) {
     ctx.textAlign = "left";
     ctx.font = "8px 'Press Start 2P'";
@@ -2324,6 +2455,13 @@ function buildTxUI() {
         + '<div class="tx-row"><div class="tx-switch-row"><span id="coopLbl">Two players, one camera</span>'
         + '<button class="tx-switch" id="txCoopSw" role="switch" aria-labelledby="coopLbl" aria-checked="false"></button></div></div>'
         + '<p class="tx-note">Sit side by side in front of the camera. Player 1 sits on the left of the preview: head tilt steers and looking up jumps. Player 2 sits on the right: a smile rains coins, and a wide open mouth gives a 5 second shield. This turns the camera on, and it works best when both faces are well lit.</p></section>';
+  html += '<section class="tx-card"><h3>VOICE CONTROL</h3>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="voiceLbl">Listen for left, right, jump</span>'
+        + '<button class="tx-switch" id="txVoiceSw" role="switch" aria-labelledby="voiceLbl" aria-checked="false"></button></div></div>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="voiceFastLbl">Fast response (acts on partial words)</span>'
+        + '<button class="tx-switch" id="txVoiceFastSw" role="switch" aria-labelledby="voiceFastLbl" aria-checked="true"></button></div></div>'
+        + '<p class="tx-note" id="voiceLine"></p>'
+        + '<p class="tx-note">Say a word or chain them: "left left jump". Fast response reacts quicker but can misfire more. The browser sends your speech to its speech service, so you need to be online.</p></section>';
   const last = TX_SCHEMA[2];
   html += '<section class="tx-card"><h3>' + last.title + '</h3>' + last.rows.map(r => txRow(...r)).join("") + '</section>';
   txBody.innerHTML = html;
@@ -2337,6 +2475,7 @@ function refreshTxUI() {
   });
   document.getElementById("txAdaptSw").setAttribute("aria-checked", String(tx.adapt));
   syncCoopUI();
+  syncVoiceUI();
 }
 
 let lastMoodLine = "";
@@ -2378,6 +2517,8 @@ txBody.addEventListener("input", e => {
 });
 txBody.addEventListener("click", e => {
   if (e.target.id === "txCoopSw") { setCoop(!coop.on); return; }
+  if (e.target.id === "txVoiceSw") { initAudio(); setVoice(!voice.wanted); return; }
+  if (e.target.id === "txVoiceFastSw") { tx.voiceFast = !tx.voiceFast; applySettings(); syncVoiceUI(); return; }
   if (e.target.id === "txAdaptSw") {
     tx.adapt = !tx.adapt;
     e.target.setAttribute("aria-checked", String(tx.adapt));
