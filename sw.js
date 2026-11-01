@@ -1,7 +1,7 @@
 /* Service worker for Aachi's Gameslot.
    Caches the app so it opens fast and works offline after the first visit.
    Bump CACHE when you deploy a new version so players get the update. */
-const CACHE = "aachi-gameslot-v2";
+const CACHE = "aachi-gameslot-v4";
 const CORE = ["./", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png"];
 
 self.addEventListener("install", e => {

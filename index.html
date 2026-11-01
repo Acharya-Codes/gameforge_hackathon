@@ -688,6 +688,14 @@
     -webkit-tap-highlight-color: transparent;
   }
   #micBtn.listening { outline: 2px solid #4ade80; outline-offset: 3px; box-shadow: 0 0 14px rgba(74, 222, 128, 0.7); }
+  .tx-bar.band { background: linear-gradient(90deg, #0b0e16 30%, #123524 30% 60%, #0b0e16 60%); }
+  .tx-bar i.load { background: #4ade80; }
+  .tx-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #cbd5e1; margin: 0 0 10px; }
+  .tx-table th, .tx-table td { padding: 5px 3px; text-align: right; border-bottom: 1px solid #1f293d; }
+  .tx-table th:first-child, .tx-table td:first-child { text-align: left; }
+  .tx-table th { font-family: var(--arcade-font); font-size: 7px; color: #94a3b8; font-weight: normal; }
+  .tx-mini-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tx-mini-row .tx-btn { padding: 9px 12px; font-size: 8px; }
   .btn-coop.on {
     background: radial-gradient(circle at 50% 30%, #67e8f9 0%, #06b6d4 60%, #155e75 100%);
     border-color: #0e7490;
@@ -1007,7 +1015,8 @@ const TX_DEFAULTS = {
   tiltSens: 5, jumpSens: 5, smileSens: 5, swipeSens: 5,
   adapt: true, adaptStrength: 0.6, moodSens: 5,
   musicVol: 0.5, sfxVol: 0.7, shakeAmt: 1, hue: 0,
-  voiceFast: true
+  voiceFast: true,
+  head3d: true, depth: 1, headGain: 1, abMode: false
 };
 const tx = Object.assign({}, TX_DEFAULTS);
 try {
@@ -1017,6 +1026,20 @@ try {
 let txOpen = false, userPaused = false, swipeDist = 12, jumpFactor = 1;
 const mood = { stress: 0, joy: 0, tStress: 0, tJoy: 0, seen: 0, perf: 0, speedMul: 1, spawnMul: 1, label: "STEADY" };
 const music = { intensity: 0.15 };
+
+/* ---------- FLOW CONTROL + EVIDENCE ---------- */
+const FLOW_TARGET = 0.45, FLOW_LO = 0.30, FLOW_HI = 0.60;   // aim for a load of 0.45, flow band 0.30 to 0.60
+const flow = { load: 0.3, u: 0.5, uPrev: 0.5, actions: [], closeCalls: [], prevLane: 1, laneChangedAt: -9, jumpAt: -9 };
+const run = { active: false, adaptive: true, dur: 0, flowT: 0, sumStress: 0, sumU: 0, close: 0, acts: 0 };
+let abNext = Math.random() < 0.5, lastRun = null;
+const RUN_LOG_KEY = "aachiRuns";
+let runLog = [];
+try { runLog = JSON.parse(localStorage.getItem(RUN_LOG_KEY) || "[]"); if (!Array.isArray(runLog)) runLog = []; } catch (e) { runLog = []; }
+function isAdaptive() { return tx.abMode ? run.adaptive : tx.adapt; }
+
+/* ---------- HEAD-COUPLED VIEW (XR) ---------- */
+const head = { ex: 0, ey: 0, ez: 800, hx: 0.5, hy: 0.5, hf: 0.3, rx: null, ry: 0.5, rf: 0.3, seen: -9999 };
+const STARS = Array.from({ length: 28 }, () => ({ x: Math.random(), y: Math.random(), z: 350 + Math.random() * 900, r: 0.8 + Math.random() * 1.6 }));
 // Co-op beta: Player 1 (left) steers, Player 2 (right) uses expressions to help
 const coop = { on: false, present: false, smiling: false, surprised: false, rain: 0, shieldLeft: 0, shieldCd: 0 };
 
@@ -1131,7 +1154,8 @@ soundBtn.addEventListener("click", () => {
 /* ---------- VOICE CONTROL (say "left", "right", "jump") ---------- */
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const MOBILE_UA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-const voice = { wanted: false, rec: null, seen: {}, last: "", lastAt: -9999, quick: 0, t0: 0, msg: "" };
+const voice = { wanted: false, rec: null, seen: {}, last: "", lastAt: -9999, quick: 0, t0: 0, msg: "",
+               local: false, noPhrases: false, speechAt: 0, lat: 0 };
 
 const VOICE_WORDS = [
   [/^(left|lefts|lift)$/, "left"],
@@ -1155,6 +1179,7 @@ function fireVoice(cmd) {
   input.fire(cmd);
   voice.last = cmd;
   voice.lastAt = performance.now();
+  if (voice.speechAt) { voice.lat = voice.lastAt - voice.speechAt; voice.speechAt = 0; syncVoiceUI(); }
   if (cmd === "jump") { setJoystickVisual("up"); pulseButton(spaceBtn); }
   else setJoystickVisual(cmd);
   setTimeout(() => setJoystickVisual(null), 220);
@@ -1181,13 +1206,22 @@ function startVoiceRec() {
   rec.continuous = !MOBILE_UA;
   rec.interimResults = true;
   rec.maxAlternatives = 3;
+  if (voice.local) {
+    // On-device recognition: no network round trip, so it is faster and works offline.
+    try { rec.processLocally = true; } catch (err) {}
+    // Bias the recognizer toward our three words so it hears them more reliably.
+    if (!voice.noPhrases && typeof SpeechRecognitionPhrase === "function") {
+      try { rec.phrases = ["left", "right", "jump"].map(w => new SpeechRecognitionPhrase(w, 6)); } catch (err) {}
+    }
+  }
   voice.seen = {};
   rec.onstart = () => {
     voice.t0 = performance.now();
-    voice.msg = "Listening: say left, right or jump.";
+    voice.msg = voice.local ? "Listening on-device: say left, right or jump." : "Listening: say left, right or jump.";
     statusEl.textContent = "Voice Control: say 'Left', 'Right' or 'Jump'";
     syncVoiceUI();
   };
+  rec.onspeechstart = () => { voice.speechAt = performance.now(); };
   rec.onresult = handleVoiceResult;
   rec.onerror = ev => {
     if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
@@ -1196,6 +1230,11 @@ function startVoiceRec() {
     } else if (ev.error === "audio-capture") {
       voice.wanted = false;
       voice.msg = "No microphone found.";
+    } else if (ev.error === "language-not-supported" && voice.local) {
+      voice.local = false;
+      voice.msg = "On-device speech isn't available for your language here, so the cloud is used instead.";
+    } else if (ev.error === "phrases-not-supported") {
+      voice.noPhrases = true;
     } else if (ev.error === "network") {
       voice.msg = "Voice recognition needs an internet connection: the browser sends your speech to its speech service.";
     }
@@ -1213,10 +1252,33 @@ function startVoiceRec() {
       syncVoiceUI();
       return;
     }
-    setTimeout(startVoiceRec, 150);
+    setTimeout(startVoiceRec, 30);
   };
   voice.rec = rec;
   try { rec.start(); } catch (err) { voice.rec = null; }
+}
+
+// Switch to on-device recognition when the browser supports it (faster, and works offline).
+async function upgradeToLocal() {
+  if (voice.local || !SpeechRec || typeof SpeechRec.available !== "function") return;
+  const lang = voiceLang();
+  try {
+    let st = await SpeechRec.available({ langs: [lang], processLocally: true });
+    if (st !== "available" && typeof SpeechRec.install === "function") {
+      voice.msg = "Downloading the offline speech pack for faster voice...";
+      syncVoiceUI();
+      const ok = await SpeechRec.install({ langs: [lang], processLocally: true });
+      if (ok) st = await SpeechRec.available({ langs: [lang], processLocally: true });
+    }
+    if (st === "available" && voice.wanted) {
+      voice.local = true;
+      if (voice.rec) { try { voice.rec.abort(); } catch (err) {} } // restarts itself in on-device mode
+      voice.msg = "On-device voice is on: faster, and it works offline.";
+    } else if (voice.wanted) {
+      voice.msg = "Listening: say left, right or jump.";
+    }
+    syncVoiceUI();
+  } catch (err) { /* stay on cloud recognition */ }
 }
 
 function setVoice(on) {
@@ -1232,6 +1294,7 @@ function setVoice(on) {
     voice.quick = 0;
     voice.msg = "Starting the microphone...";
     startVoiceRec();
+    upgradeToLocal();
   } else {
     if (voice.rec) { try { voice.rec.onend = null; voice.rec.abort(); } catch (err) {} voice.rec = null; }
     voice.msg = "Voice control muted.";
@@ -1250,9 +1313,13 @@ function syncVoiceUI() {
   if (fs) fs.setAttribute("aria-checked", String(tx.voiceFast));
   const line = document.getElementById("voiceLine");
   if (line) {
-    line.textContent = !SpeechRec
+    let t = !SpeechRec
       ? "This browser doesn't support speech recognition. Use Chrome, Edge or Safari."
       : (voice.msg || "Say 'left', 'right' or 'jump'. Saying 'jump' also starts a run.");
+    if (SpeechRec && voice.wanted) {
+      t += " [" + (voice.local ? "On-device" : "Cloud") + (voice.lat ? ", last response " + Math.round(voice.lat) + " ms" : "") + "]";
+    }
+    line.textContent = t;
   }
 }
 
@@ -1322,6 +1389,7 @@ function pollFace() {
   const order = faceOrder(res);
   const pi = order[0];
   const lm = res.faceLandmarks[pi];
+  feedHead(lm);
   if (coop.on) runWildCard(res, order.length > 1 ? order[1] : -1);
 
   // Head tilt left / right -> lane change (updates physical joystick too!)
@@ -1917,8 +1985,9 @@ function drawParticles() {
     ctx.fillStyle = p.color;
     ctx.shadowColor = p.color;
     ctx.shadowBlur = 8;
+    const PP = proj(p.x, p.y, fz(p.y));
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.arc(PP.x, PP.y, p.size * alpha * PP.s, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1954,6 +2023,7 @@ function reset(state = "ready") {
   shakeTime = 0;
   input.clear();
   coop.shieldLeft = 0; coop.shieldCd = 0; coop.rain = 0;
+  if (state === "play") startRun();
 }
 reset();
 
@@ -1979,22 +2049,24 @@ function update(dt) {
   }
   if (goPress && g.jumpT <= 0) {
     g.jumpT = JUMP_TIME;
+    noteJump();
     playJumpSound();
   }
   if (input.take("left")) {
     const prev = g.lane;
     g.lane = Math.max(0, g.lane - 1);
-    if (g.lane !== prev) playLaneSound(-1);
+    if (g.lane !== prev) { playLaneSound(-1); noteLane(prev); }
   }
   if (input.take("right")) {
     const prev = g.lane;
     g.lane = Math.min(LANES - 1, g.lane + 1);
-    if (g.lane !== prev) playLaneSound(1);
+    if (g.lane !== prev) { playLaneSound(1); noteLane(prev); }
   }
   g.x += (laneX(g.lane) - g.x) * Math.min(1, dt * 14);
   g.jumpT = Math.max(0, g.jumpT - dt);
 
   g.t += dt;
+  updateFlow(dt);
   if (coop.on) {
     coop.shieldLeft = Math.max(0, coop.shieldLeft - dt);
     coop.shieldCd = Math.max(0, coop.shieldCd - dt);
@@ -2023,7 +2095,9 @@ function update(dt) {
 
   const airborne = g.jumpT > 0.1;
   for (const o of g.obs) {
+    const prevY = o.y;
     o.y += speed * dt;
+    if (!o.counted && prevY < PY && o.y >= PY) { o.counted = true; noteObstaclePass(o, airborne); }
     if (coop.on && coop.shieldLeft > 0 && checkBallObstacleHit(g.x, PY, BALL_RADIUS, o) && !(o.low && airborne)) {
       coop.shieldLeft = 0;
       o.y = H + 100;
@@ -2035,6 +2109,7 @@ function update(dt) {
       g.state = "over";
       g.overAt = performance.now();
       mood.perf = g.t < 15 ? Math.min(1, mood.perf + 0.4) : Math.max(0, mood.perf - 0.25);
+      endRun();
       best = Math.max(best, Math.floor(g.score));
       input.clear();
       playHitSound();
@@ -2081,7 +2156,7 @@ function draw() {
   ctx.fillRect(0, 0, W, H);
 
   // Mood tint: cool blue when the player is strained, warm gold when happy
-  if (tx.adapt) {
+  if (isAdaptive()) {
     if (mood.stress > 0.02) {
       ctx.fillStyle = "rgba(56, 189, 248, " + (0.2 * mood.stress * tx.adaptStrength).toFixed(3) + ")";
       ctx.fillRect(0, 0, W, H);
@@ -2092,36 +2167,21 @@ function draw() {
     }
   }
 
-  // Retro Neon Lane dividers
-  ctx.strokeStyle = "rgba(225, 29, 72, 0.28)";
-  ctx.lineWidth = 3;
-  ctx.setLineDash([20, 20]);
-  ctx.lineDashOffset = -g.scroll;
-  for (let i = 1; i < LANES; i++) {
-    ctx.beginPath();
-    ctx.moveTo(LW * i, 0);
-    ctx.lineTo(LW * i, H);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
+  // Far field + receding floor (projected, so head movement gives real parallax)
+  drawFarField();
+  drawFloor();
 
-  // Outer neon rails
-  ctx.strokeStyle = "#e11d48";
-  ctx.lineWidth = 3;
-  ctx.shadowColor = "#e11d48";
-  ctx.shadowBlur = 8;
-  ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(2, H); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W - 2, 0); ctx.lineTo(W - 2, H); ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Obstacles
+  // Obstacles (projected onto the receding floor)
   for (const o of g.obs) {
     const halfW = currentMode === "pc" ? 42 : 36;
     const h = o.low ? 24 : 46;
-    const ox = laneX(o.lane) - halfW;
-    const oy = o.y - h / 2;
+    const P = proj(laneX(o.lane), o.y, fz(o.y));
+    const ox = -halfW;
+    const oy = -h / 2;
 
     ctx.save();
+    ctx.translate(P.x, P.y);
+    ctx.scale(P.s, P.s);
     if (o.low) {
       // Blue hurdle
       ctx.fillStyle = "#0284c7";
@@ -2135,7 +2195,7 @@ function draw() {
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 9px 'Press Start 2P'";
       ctx.textAlign = "center";
-      ctx.fillText("▲ JUMP", laneX(o.lane), o.y + 4);
+      ctx.fillText("▲ JUMP", 0, 4);
     } else {
       // Red block
       ctx.fillStyle = "#dc2626";
@@ -2151,8 +2211,8 @@ function draw() {
       ctx.lineWidth = 2;
       for (let s = -halfW + 10; s < halfW; s += 16) {
         ctx.beginPath();
-        ctx.moveTo(laneX(o.lane) + s, oy + 4);
-        ctx.lineTo(laneX(o.lane) + s + 10, oy + h - 4);
+        ctx.moveTo(s, oy + 4);
+        ctx.lineTo(s + 10, oy + h - 4);
         ctx.stroke();
       }
     }
@@ -2161,17 +2221,20 @@ function draw() {
 
   // Coins
   for (const c of g.coins) {
+    const P = proj(laneX(c.lane), c.y, fz(c.y));
     ctx.save();
+    ctx.translate(P.x, P.y);
+    ctx.scale(P.s, P.s);
     ctx.shadowColor = "#10b981";
     ctx.shadowBlur = 12;
     ctx.fillStyle = "#10b981";
     ctx.beginPath();
-    ctx.arc(laneX(c.lane), c.y, 11, 0, Math.PI * 2);
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#fbbf24";
     ctx.beginPath();
-    ctx.arc(laneX(c.lane), c.y, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -2179,24 +2242,28 @@ function draw() {
   // Particles
   drawParticles();
 
-  // Player Ball
+  // Player Ball (projected: a jump lifts it toward the viewer, so it grows and shifts with head parallax)
   const p = 1 - g.jumpT / JUMP_TIME;
   const lift = g.jumpT > 0 ? Math.sin(Math.PI * p) * 55 : 0;
   const isBoost = input.boost && g.state === "play";
+  const B = proj(g.x, PY - (tx.head3d ? lift * 0.6 : lift), fz(PY) - lift * 2.5);
+  const SH = proj(g.x, PY + 22, fz(PY + 22));
 
   // Ground shadow
   const shadowScale = Math.max(0.4, 1 - lift / 80);
   ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
   ctx.beginPath();
-  ctx.ellipse(g.x, PY + 22, 22 * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.ellipse(SH.x, SH.y, 22 * shadowScale * SH.s, 8 * shadowScale * SH.s, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Ball Sphere
   ctx.save();
+  ctx.translate(B.x, B.y);
+  ctx.scale(B.s, B.s);
   ctx.shadowColor = isBoost ? "#f59e0b" : "#e11d48";
   ctx.shadowBlur = isBoost ? 24 : 16;
 
-  const ballGrad = ctx.createRadialGradient(g.x - 6, PY - lift - 6, 2, g.x, PY - lift, 20);
+  const ballGrad = ctx.createRadialGradient(-6, -6, 2, 0, 0, 20);
   if (isBoost) {
     ballGrad.addColorStop(0, "#fffbeb");
     ballGrad.addColorStop(0.4, "#fbbf24");
@@ -2208,19 +2275,21 @@ function draw() {
   }
   ctx.fillStyle = ballGrad;
   ctx.beginPath();
-  ctx.arc(g.x, PY - lift, 20, 0, Math.PI * 2);
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // Co-op shield ring
   if (coop.on && coop.shieldLeft > 0 && (coop.shieldLeft > 1.5 || Math.floor(coop.shieldLeft * 6) % 2 === 0)) {
     ctx.save();
+    ctx.translate(B.x, B.y);
+    ctx.scale(B.s, B.s);
     ctx.strokeStyle = "#22d3ee";
     ctx.shadowColor = "#22d3ee";
     ctx.shadowBlur = 14;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(g.x, PY - lift, 31, 0, Math.PI * 2);
+    ctx.arc(0, 0, 31, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -2248,11 +2317,11 @@ function draw() {
     ctx.fillText("VOICE: " + voice.last.toUpperCase(), W - 20, 56);
   }
 
-  if (tx.adapt && g.state === "play" && (mood.label === "STRAINED" || mood.label === "HAPPY")) {
+  if (isAdaptive() && g.state === "play" && (mood.label === "STRAINED" || mood.label === "HAPPY")) {
     ctx.textAlign = "left";
     ctx.font = "8px 'Press Start 2P'";
     ctx.fillStyle = mood.label === "STRAINED" ? "#38bdf8" : "#fbbf24";
-    ctx.fillText(mood.label === "STRAINED" ? "MOOD: STRAINED - EASING" : "MOOD: HAPPY - SPEEDING UP", 20, isBoost ? 76 : 58);
+    ctx.fillText(mood.label === "STRAINED" ? "MOOD: STRAINED - EASING" : "MOOD: HAPPY", 20, isBoost ? 76 : 58);
   }
 
   if (coop.on) {
@@ -2266,6 +2335,13 @@ function draw() {
     else tag = "CO-OP BETA: P2 READY";
     ctx.fillStyle = col;
     ctx.fillText(tag, 20, H - 14);
+  }
+
+  if (tx.abMode) {
+    ctx.textAlign = "right";
+    ctx.font = "8px 'Press Start 2P'";
+    ctx.fillStyle = run.adaptive ? "#4ade80" : "#94a3b8";
+    ctx.fillText(run.adaptive ? "A/B: ADAPTIVE" : "A/B: FIXED", W - 20, H - 14);
   }
 
   // Ready / Game Over Overlay Screens
@@ -2285,6 +2361,11 @@ function draw() {
       ctx.font = "12px 'Press Start 2P'";
       ctx.fillStyle = "#ffffff";
       ctx.fillText("SCORE: " + Math.floor(g.score), W / 2, H / 2 + 8);
+      if (lastRun) {
+        ctx.font = "8px 'Press Start 2P'";
+        ctx.fillStyle = "#4ade80";
+        ctx.fillText("TIME IN FLOW: " + Math.round(lastRun.flowPct) + "%", W / 2, H / 2 + 26);
+      }
     }
 
     ctx.font = "10px 'Press Start 2P'";
@@ -2336,15 +2417,17 @@ function updateMood(dt) {
   mood.stress += (tS - mood.stress) * a;
   mood.joy += (tJ - mood.joy) * a;
   mood.perf = Math.max(0, mood.perf - dt * 0.015);
-  const st = tx.adapt ? tx.adaptStrength : 0;
-  mood.speedMul = 1 - 0.32 * st * mood.stress + 0.14 * st * mood.joy;
-  mood.spawnMul = 1 - 0.40 * st * mood.stress + 0.18 * st * mood.joy;
-  mood.label = !tx.adapt ? "OFF" : mood.stress > 0.45 ? "STRAINED" : mood.joy > 0.45 ? "HAPPY" : "STEADY";
+  // The flow controller (see updateFlow) sets the difficulty level u in [0,1]; here it becomes speed and spawn multipliers.
+  const on = isAdaptive();
+  const auth = 0.4 + tx.adaptStrength;
+  mood.speedMul = on ? 1 + ((0.78 + 0.44 * flow.u) - 1) * auth : 1;
+  mood.spawnMul = on ? 1 + ((0.55 + 0.90 * flow.u) - 1) * auth : 1;
+  mood.label = !on ? "OFF" : mood.stress > 0.45 ? "STRAINED" : mood.joy > 0.45 ? "HAPPY" : "STEADY";
 }
 
 /* ---------- ADAPTIVE MUSIC STATE + OPTIONAL MUSIC FILES ---------- */
 function updateMusicState(dt) {
-  const st = tx.adapt ? tx.adaptStrength : 0;
+  const st = isAdaptive() ? tx.adaptStrength : 0;
   let target = 0.15;
   if (g && g.state === "play") target = 0.3 + Math.min(0.45, g.t / 90) + (input.boost ? 0.12 : 0);
   target += (mood.joy * 0.2 - mood.stress * 0.35) * st;
@@ -2403,7 +2486,7 @@ const TX_FMT = {
   speed: fx(2, "x"), density: fx(2, "x"), jump: fx(2, "s"), boostMul: fx(2, "x"), coinRate: fPct,
   tiltSens: fScale, jumpSens: fScale, smileSens: fScale, swipeSens: fScale,
   adaptStrength: fPct, moodSens: fScale, musicVol: fPct, sfxVol: fPct, shakeAmt: fPct,
-  hue: v => v + "°"
+  hue: v => v + "°", depth: fx(1, "x"), headGain: fx(1, "x")
 };
 const TX_SCHEMA = [
   { title: "GAMEPLAY", rows: [
@@ -2461,7 +2544,22 @@ function buildTxUI() {
         + '<div class="tx-row"><div class="tx-switch-row"><span id="voiceFastLbl">Fast response (acts on partial words)</span>'
         + '<button class="tx-switch" id="txVoiceFastSw" role="switch" aria-labelledby="voiceFastLbl" aria-checked="true"></button></div></div>'
         + '<p class="tx-note" id="voiceLine"></p>'
-        + '<p class="tx-note">Say a word or chain them: "left left jump". Fast response reacts quicker but can misfire more. The browser sends your speech to its speech service, so you need to be online.</p></section>';
+        + '<p class="tx-note">Say a word or chain them: "left left jump". Fast response reacts quicker but can misfire more. Where the browser supports it, the game switches to on-device recognition, which is faster and works offline. Otherwise the browser sends your speech to its speech service, so you need to be online.</p></section>';
+  html += '<section class="tx-card"><h3>XR VIEW: HEAD-COUPLED 3D</h3>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="headLbl">3D view that follows my head</span>'
+        + '<button class="tx-switch" id="txHeadSw" role="switch" aria-labelledby="headLbl" aria-checked="true"></button></div></div>'
+        + txRow("depth", "Scene depth", 0.2, 2, 0.1)
+        + txRow("headGain", "Head tracking strength", 0, 2, 0.1)
+        + '<p class="tx-note">The lanes recede into the screen and the whole scene is re-projected from where your head is. Lean left or right and look around the obstacles, like looking through a window. Lean in for stronger perspective. Needs the camera.</p></section>';
+  html += '<section class="tx-card mood"><h3>FLOW LAB: A/B EVIDENCE</h3>'
+        + '<div class="tx-row"><div class="tx-switch-row"><span id="abLbl">A/B study: alternate adaptive and fixed each run</span>'
+        + '<button class="tx-switch" id="txAbSw" role="switch" aria-labelledby="abLbl" aria-checked="false"></button></div></div>'
+        + '<p class="tx-note" id="flowCond"></p>'
+        + '<div class="tx-meter"><span>Load</span><div class="tx-bar band"><i class="load" id="mLoad"></i></div></div>'
+        + '<div class="tx-meter"><span>Level</span><div class="tx-bar"><i class="joy" id="mDiff"></i></div></div>'
+        + '<div id="flowTable"></div>'
+        + '<div class="tx-mini-row"><button class="tx-btn ghost" id="txExport">Export CSV</button><button class="tx-btn ghost" id="txClear">Clear data</button></div>'
+        + '<p class="tx-note">Load is estimated from your strain, how busy your inputs are and close calls. The green zone is the flow band. Adaptive runs steer the game to keep you in it; fixed runs only measure. Play at least 5 runs of each before comparing, because a few runs prove nothing.</p></section>';
   const last = TX_SCHEMA[2];
   html += '<section class="tx-card"><h3>' + last.title + '</h3>' + last.rows.map(r => txRow(...r)).join("") + '</section>';
   txBody.innerHTML = html;
@@ -2474,6 +2572,9 @@ function refreshTxUI() {
     document.getElementById("out_" + k).textContent = TX_FMT[k](tx[k]);
   });
   document.getElementById("txAdaptSw").setAttribute("aria-checked", String(tx.adapt));
+  document.getElementById("txHeadSw").setAttribute("aria-checked", String(tx.head3d));
+  document.getElementById("txAbSw").setAttribute("aria-checked", String(tx.abMode));
+  refreshFlowLab();
   syncCoopUI();
   syncVoiceUI();
 }
@@ -2482,9 +2583,14 @@ let lastMoodLine = "";
 function refreshMoodMeters() {
   document.getElementById("mStress").style.width = Math.round(mood.stress * 100) + "%";
   document.getElementById("mJoy").style.width = Math.round(mood.joy * 100) + "%";
+  document.getElementById("mLoad").style.width = Math.round(flow.load * 100) + "%";
+  document.getElementById("mDiff").style.width = Math.round(flow.u * 100) + "%";
+  const cond = document.getElementById("flowCond");
+  const ct = (isAdaptive() ? "Now: ADAPTIVE. The game steers you toward the flow band." : "Now: FIXED control. Difficulty does not adapt.") + (tx.abMode ? " Alternating each run." : "");
+  if (cond.textContent !== ct) cond.textContent = ct;
   let line;
-  if (!tx.adapt) line = "Adaptation is off. The game keeps the speed you set.";
-  else if (face.on) line = "Reading your expression now: " + mood.label.toLowerCase() + ". Furrowed brows ease the game down, smiles speed it up.";
+  if (!isAdaptive()) line = tx.abMode ? "This run is the fixed control: the difficulty does not adapt, it only measures you." : "Adaptation is off. The game keeps the speed you set.";
+  else if (face.on) line = "Reading your expression now: " + mood.label.toLowerCase() + ". Furrowed brows raise your load estimate, so the game eases down.";
   else line = "Camera is off, so the game judges strain from how you play: quick crashes ease it down. Turn on the 👁️ camera to read your expression instead.";
   if (line !== lastMoodLine) { document.getElementById("moodLine").textContent = line; lastMoodLine = line; }
 }
@@ -2517,6 +2623,10 @@ txBody.addEventListener("input", e => {
 });
 txBody.addEventListener("click", e => {
   if (e.target.id === "txCoopSw") { setCoop(!coop.on); return; }
+  if (e.target.id === "txHeadSw") { tx.head3d = !tx.head3d; applySettings(); refreshTxUI(); return; }
+  if (e.target.id === "txAbSw") { tx.abMode = !tx.abMode; applySettings(); refreshTxUI(); refreshMoodMeters(); return; }
+  if (e.target.id === "txExport") { exportRuns(); return; }
+  if (e.target.id === "txClear") { runLog.length = 0; lastRun = null; saveRuns(); refreshFlowLab(); return; }
   if (e.target.id === "txVoiceSw") { initAudio(); setVoice(!voice.wanted); return; }
   if (e.target.id === "txVoiceFastSw") { tx.voiceFast = !tx.voiceFast; applySettings(); syncVoiceUI(); return; }
   if (e.target.id === "txAdaptSw") {
@@ -2544,6 +2654,187 @@ txCloseBtn.addEventListener("click", closeTx);
 document.getElementById("txResume").addEventListener("click", closeTx);
 applySettings();
 refreshTxUI();
+
+/* ---------- FLOW CONTROLLER + EVIDENCE LOG ---------- */
+function startRun() {
+  run.adaptive = tx.abMode ? abNext : tx.adapt;
+  if (tx.abMode) abNext = !abNext;
+  run.active = true;
+  run.dur = run.flowT = run.sumStress = run.sumU = 0;
+  run.close = run.acts = 0;
+  flow.u = run.adaptive ? 0.5 + 0.5 * (flow.uPrev - 0.5) : 0.5; // start from a blend of the last adaptive run's level
+  flow.load = 0.3;
+  flow.actions.length = 0;
+  flow.closeCalls.length = 0;
+  flow.prevLane = 1; flow.laneChangedAt = -9; flow.jumpAt = -9;
+}
+function noteLane(prev) { flow.prevLane = prev; flow.laneChangedAt = g.t; flow.actions.push(g.t); run.acts++; }
+function noteJump() { flow.jumpAt = g.t; flow.actions.push(g.t); run.acts++; }
+// A close call = the player only just left the lane (or only just jumped) as the obstacle reached them.
+function noteObstaclePass(o, airborne) {
+  const lateLane = o.lane === flow.prevLane && g.lane !== o.lane && g.t - flow.laneChangedAt < 0.35;
+  const lateJump = o.low && g.lane === o.lane && airborne && g.t - flow.jumpAt < 0.25;
+  if (lateLane || lateJump) { flow.closeCalls.push(g.t); run.close++; }
+}
+function updateFlow(dt) {
+  while (flow.actions.length && flow.actions[0] < g.t - 4) flow.actions.shift();
+  while (flow.closeCalls.length && flow.closeCalls[0] < g.t - 8) flow.closeCalls.shift();
+  const A = Math.min(1, flow.actions.length / 4 / 2.2);   // inputs per second, 2.2 per second counts as maximum
+  const C = Math.min(1, flow.closeCalls.length / 2);      // two close calls in 8 seconds counts as maximum
+  const S = mood.stress;                                  // facial strain (or crash history when the camera is off)
+  const raw = 0.45 * S + 0.30 * A + 0.25 * C;
+  flow.load += (raw - flow.load) * (1 - Math.exp(-dt / 3));
+  run.dur += dt;
+  if (flow.load >= FLOW_LO && flow.load <= FLOW_HI) run.flowT += dt;
+  run.sumStress += S * dt;
+  run.sumU += flow.u * dt;
+  if (run.adaptive) {                                     // integral controller, with a dead band so it does not twitch
+    const e = FLOW_TARGET - flow.load;
+    if (Math.abs(e) > 0.08) flow.u = Math.max(0, Math.min(1, flow.u + dt * 0.025 * Math.max(-1.5, Math.min(1.5, e / 0.3))));
+  }
+}
+function saveRuns() { try { localStorage.setItem(RUN_LOG_KEY, JSON.stringify(runLog)); } catch (e) {} }
+function endRun() {
+  if (!run.active) return;
+  run.active = false;
+  if (run.dur < 3) return;
+  if (run.adaptive) flow.uPrev = run.sumU / run.dur;
+  lastRun = {
+    ts: Date.now(), adaptive: run.adaptive ? 1 : 0, ab: tx.abMode ? 1 : 0,
+    dur: +run.dur.toFixed(1), score: Math.floor(g.score),
+    flowPct: +(100 * run.flowT / run.dur).toFixed(1),
+    stress: +(run.sumStress / run.dur).toFixed(3), diff: +(run.sumU / run.dur).toFixed(3),
+    close: run.close, acts: run.acts, cam: face.on ? 1 : 0, coop: coop.on ? 1 : 0
+  };
+  runLog.push(lastRun);
+  if (runLog.length > 300) runLog.splice(0, runLog.length - 300);
+  saveRuns();
+  refreshFlowLab();
+}
+function flowStats(list) {
+  const m = k => list.length ? list.reduce((a, r) => a + r[k], 0) / list.length : null;
+  return { n: list.length, dur: m("dur"), score: m("score"), flowPct: m("flowPct"), stress: m("stress") };
+}
+function refreshFlowLab() {
+  const el = document.getElementById("flowTable");
+  if (!el) return;
+  const ab = runLog.filter(r => r.ab === 1);
+  const rows = [["Adaptive", flowStats(ab.filter(r => r.adaptive === 1))], ["Fixed", flowStats(ab.filter(r => r.adaptive === 0))]];
+  const cell = (v, d, suf) => v === null ? "-" : v.toFixed(d) + suf;
+  let html = '<table class="tx-table"><tr><th></th><th>Runs</th><th>Survival</th><th>Score</th><th>In flow</th><th>Strain</th></tr>';
+  for (const [name, st] of rows) {
+    html += "<tr><td>" + name + "</td><td>" + st.n + "</td><td>" + cell(st.dur, 1, "s") + "</td><td>" + cell(st.score, 0, "")
+          + "</td><td>" + cell(st.flowPct, 0, "%") + "</td><td>" + cell(st.stress, 2, "") + "</td></tr>";
+  }
+  html += "</table>";
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+function exportRuns() {
+  const cols = ["ts", "adaptive", "ab", "dur", "score", "flowPct", "stress", "diff", "close", "acts", "cam", "coop"];
+  const csv = [cols.join(",")].concat(runLog.map(r => cols.map(c => r[c]).join(","))).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "gameslot-runs.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- HEAD-COUPLED PROJECTION ---------- */
+function feedHead(lm) {
+  head.hx = 1 - lm[1].x;                          // preview is mirrored, so flip x
+  head.hy = lm[1].y;
+  head.hf = Math.abs(lm[152].y - lm[10].y);       // face height: bigger means closer to the camera
+  if (head.rx === null) { head.rx = head.hx; head.ry = head.hy; head.rf = head.hf; }
+  head.seen = performance.now();
+}
+function updateHead(dt) {
+  const now = performance.now();
+  let tex = 0, tey = 0, tez = 800;
+  if (head.rx !== null && now - head.seen < 600) {
+    const ra = 1 - Math.exp(-dt / 10);            // the resting pose slowly follows where you sit
+    head.rx += (head.hx - head.rx) * ra;
+    head.ry += (head.hy - head.ry) * ra;
+    head.rf += (head.hf - head.rf) * ra;
+    const gain = tx.headGain;
+    tex = Math.max(-1, Math.min(1, (head.hx - head.rx) / 0.18)) * W * 0.36 * gain;
+    tey = Math.max(-1, Math.min(1, (head.hy - head.ry) / 0.18)) * H * 0.22 * gain;
+    tez = 800 / Math.max(0.75, Math.min(1.35, head.hf / head.rf)); // lean in: eye closer, stronger perspective
+  } else if (now - head.seen > 3000) {
+    head.rx = null;                               // re-centre when the player comes back
+  }
+  const a = 1 - Math.exp(-dt / 0.06);             // light smoothing keeps it responsive but hides tracker jitter
+  head.ex += (tex - head.ex) * a;
+  head.ey += (tey - head.ey) * a;
+  head.ez += (tez - head.ez) * a;
+}
+// Depth of the floor at world height y: the top of the screen is farther away.
+function fz(y) { return tx.head3d ? 320 * tx.depth * (1 - y / H) : 0; }
+// Off-axis projection: the eye sits at (ex, ey) in front of the screen centre, ez away from the screen plane.
+// A point z behind the screen plane moves toward the eye position by the factor k = ez / (ez + z).
+function proj(x, y, z) {
+  if (!tx.head3d) return { x, y, s: 1 };
+  const k = head.ez / (head.ez + z);
+  const cx = W / 2, cy = H / 2;
+  return { x: cx + head.ex + (x - cx - head.ex) * k, y: cy + head.ey + (y - cy - head.ey) * k, s: k };
+}
+function drawFarField() {
+  if (!tx.head3d) return;
+  const t = performance.now() / 1000;
+  ctx.save();
+  for (const st of STARS) {
+    const wy = ((st.y * 1.6 - 0.3) * H + t * 24 / (1 + st.z / 300)) % (H * 1.3);
+    const P = proj((st.x * 2 - 0.5) * W, wy - 0.15 * H, st.z);
+    ctx.globalAlpha = 0.18 + 0.32 * P.s;
+    ctx.fillStyle = "#f9a8c4";
+    ctx.beginPath();
+    ctx.arc(P.x, P.y, st.r * P.s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawFloor() {
+  ctx.save();
+  if (tx.head3d) {
+    const tl = proj(0, 0, fz(0)), tr = proj(W, 0, fz(0)), bl = proj(0, H, fz(H)), br = proj(W, H, fz(H));
+    const fg = ctx.createLinearGradient(0, tl.y, 0, bl.y);
+    fg.addColorStop(0, "rgba(225, 29, 72, 0)");
+    fg.addColorStop(1, "rgba(225, 29, 72, 0.10)");
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y);
+    ctx.closePath();
+    ctx.fill();
+    // scrolling rungs give the floor a sense of speed and depth
+    ctx.lineWidth = 1.5;
+    for (let y = g.scroll - 40; y < H; y += 40) {
+      if (y < 0) continue;
+      const a = proj(0, y, fz(y)), b = proj(W, y, fz(y));
+      ctx.strokeStyle = "rgba(225, 29, 72, " + (0.04 + 0.14 * (y / H)).toFixed(3) + ")";
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+  }
+  // dashed lane dividers, drawn segment by segment so the dashes foreshorten with depth
+  ctx.strokeStyle = "rgba(225, 29, 72, 0.28)";
+  for (let i = 1; i < LANES; i++) {
+    for (let y = g.scroll - 40; y < H; y += 40) {
+      const y0 = Math.max(0, y), y1 = Math.min(H, y + 20);
+      if (y1 <= y0) continue;
+      const a = proj(LW * i, y0, fz(y0)), b = proj(LW * i, y1, fz(y1));
+      ctx.lineWidth = 3 * (a.s + b.s) / 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+  }
+  // outer neon rails
+  ctx.strokeStyle = "#e11d48";
+  ctx.shadowColor = "#e11d48";
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = 3;
+  for (const x of [2, W - 2]) {
+    const a = proj(x, 0, fz(0)), b = proj(x, H, fz(H));
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+}
 
 /* ---------- CO-OP BETA ---------- */
 const coopBtn = document.getElementById("coopBtn");
@@ -2641,6 +2932,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   updateMood(dt);
+  updateHead(dt);
   updateMusicState(dt);
   scheduleBGM();
   musicFileTick(dt);
